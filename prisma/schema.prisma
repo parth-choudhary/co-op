@@ -1,0 +1,142 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  aiAgents  AIAgent[]
+  projects  Project[]
+  modelKeys ModelKey[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  name         String
+  passwordHash String
+  avatarUrl    String?
+  role         String   @default("member")
+  matrixUserId String?
+  createdAt    DateTime @default(now())
+  assignedCards Card[]    @relation("CardAssignee")
+  comments      Comment[]
+  @@index([companyId])
+}
+
+model AIAgent {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
+  role          String
+  roleLabel     String
+  description   String?
+  avatarUrl     String?
+  isActive      Boolean  @default(true)
+  modelProvider String
+  modelName     String
+  systemPrompt  String   @db.Text
+  temperature   Float    @default(0.7)
+  tools         Json     @default("[]")
+  matrixUserId  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  assignedCards Card[]   @relation("CardAIAssignee")
+  @@index([companyId])
+}
+
+model ModelKey {
+  id           String    @id @default(cuid())
+  companyId    String
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  provider     String
+  keyEncrypted String
+  label        String?
+  isValid      Boolean   @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  @@index([companyId])
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  color        String   @default("#6366f1")
+  icon         String   @default("folder")
+  matrixRoomId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  boards Board[]
+  @@index([companyId])
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String   @default("Main Board")
+  createdAt DateTime @default(now())
+  columns Column[]
+  @@index([projectId])
+}
+
+model Column {
+  id       String  @id @default(cuid())
+  boardId  String
+  board    Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  position Int
+  color    String?
+  cards Card[]
+  @@index([boardId])
+}
+
+model Card {
+  id          String    @id @default(cuid())
+  columnId    String
+  column      Column    @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  title       String
+  description String?   @db.Text
+  position    Int
+  priority    String    @default("medium")
+  labels      Json      @default("[]")
+  dueDate     DateTime?
+  assigneeType    String?
+  assigneeUserId  String?
+  assigneeUser    User?    @relation("CardAssignee", fields: [assigneeUserId], references: [id])
+  assigneeAgentId String?
+  assigneeAgent   AIAgent? @relation("CardAIAssignee", fields: [assigneeAgentId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  comments Comment[]
+  @@index([columnId])
+  @@index([assigneeUserId])
+  @@index([assigneeAgentId])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  authorType String
+  authorId   String
+  author     User?    @relation(fields: [authorId], references: [id])
+  createdAt  DateTime @default(now())
+  @@index([cardId])
+}
