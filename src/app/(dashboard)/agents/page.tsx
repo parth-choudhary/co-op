@@ -50,7 +50,7 @@ export default function AgentsPage() {
 
       {agents.length === 0 ? (
         <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--space-16)', gap: 'var(--space-3)', textAlign: 'center' }}>
-          <Bot size={48} style={{ opacity: 0.3 }} />
+          <Bot size={48} style={{ color: 'var(--color-accent)', opacity: 0.3 }} />
           <p style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-medium)' }}>No AI agents yet</p>
           <p className="text-secondary">Add your first AI agent to start automating tasks</p>
           <button className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => setShowModal(true)}><Plus size={16} />Add Agent</button>
@@ -90,7 +90,7 @@ export default function AgentsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-3)' }}>
                   {roles.map((r) => (
                     <button key={r.id} className="glass-card" onClick={() => handleSelectRole(r)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)', cursor: 'pointer', textAlign: 'left', border: '1px solid var(--color-surface-border)', width: '100%' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                       <div className="avatar" style={{ background: r.color }}><r.icon size={16} /></div>
                       <div><div style={{ fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-sm)' }}>{r.label}</div><div className="text-tertiary text-xs">{r.description}</div></div>
                     </button>

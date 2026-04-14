@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Gamepad2, Mail, Lock, User, Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Zap, Mail, Lock, User, Building2, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,14 +28,9 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-bg-orbs">
-        <div className="auth-orb auth-orb-1" style={{ left: '-100px', right: 'auto' }} />
-        <div className="auth-orb auth-orb-2" style={{ right: '-50px', left: 'auto' }} />
-        <div className="auth-orb auth-orb-3" />
-      </div>
       <div className="auth-container fade-in">
         <div className="auth-header">
-          <div className="auth-logo"><Gamepad2 size={32} /></div>
+          <div className="auth-logo"><Zap size={28} /></div>
           <h1 className="auth-title">Create your workspace</h1>
           <p className="auth-subtitle">Start building your company with AI</p>
         </div>
@@ -67,23 +62,20 @@ export default function RegisterPage() {
         </div>
       </div>
       <style jsx global>{`
-        .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4); position: relative; overflow: hidden; }
-        .auth-bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-        .auth-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; }
-        .auth-orb-1 { width: 400px; height: 400px; background: rgba(99,102,241,0.3); top: -100px; right: -100px; animation: authFloat 8s ease-in-out infinite; }
-        .auth-orb-2 { width: 300px; height: 300px; background: rgba(139,92,246,0.25); bottom: -50px; left: -50px; animation: authFloat 10s ease-in-out infinite reverse; }
-        .auth-orb-3 { width: 200px; height: 200px; background: rgba(168,85,247,0.2); top: 40%; left: 30%; animation: authFloat 12s ease-in-out infinite; }
-        @keyframes authFloat { 0%,100%{transform:translateY(0) scale(1);} 50%{transform:translateY(-20px) scale(1.05);} }
-        .auth-container { width: 100%; max-width: 420px; padding: var(--space-10); background: var(--color-surface); backdrop-filter: blur(24px); border: 1px solid var(--color-surface-border); border-radius: var(--radius-2xl); box-shadow: var(--shadow-xl); position: relative; z-index: 1; }
+        .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4); position: relative; overflow: hidden; background: var(--color-bg-primary); }
+        .auth-page::before { content: ''; position: fixed; top: -200px; left: -200px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(0,217,146,0.06) 0%, transparent 70%); pointer-events: none; }
+        .auth-page::after { content: ''; position: fixed; bottom: -150px; right: -150px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(0,217,146,0.04) 0%, transparent 70%); pointer-events: none; }
+        .auth-container { width: 100%; max-width: 420px; padding: var(--space-10); background: var(--color-surface); border: 1px solid var(--color-surface-border); border-radius: var(--radius-lg); position: relative; z-index: 1; }
         .auth-header { text-align: center; margin-bottom: var(--space-8); }
-        .auth-logo { width: 56px; height: 56px; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; background: var(--color-accent-gradient); border-radius: var(--radius-xl); color: white; box-shadow: var(--shadow-glow); }
-        .auth-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: var(--space-2); }
+        .auth-logo { width: 56px; height: 56px; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; background: var(--color-bg-tertiary); border: 2px solid var(--color-accent); border-radius: var(--radius-lg); color: #00d992; animation: authGlow 3s ease-in-out infinite; }
+        @keyframes authGlow { 0%,100% { box-shadow: 0 0 4px rgba(0,217,146,0.3); } 50% { box-shadow: 0 0 16px rgba(0,217,146,0.5); } }
+        .auth-title { font-family: var(--font-family-heading); font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: var(--space-2); letter-spacing: -0.5px; }
         .auth-subtitle { color: var(--color-text-secondary); font-size: var(--font-size-base); }
         .auth-form { display: flex; flex-direction: column; gap: var(--space-5); }
         .auth-input-wrapper { position: relative; }
         .auth-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-tertiary); pointer-events: none; z-index: 1; }
         .auth-input { padding-left: 40px !important; }
-        .auth-error { padding: var(--space-3); background: var(--color-error-muted); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-md); color: var(--color-error); font-size: var(--font-size-sm); text-align: center; }
+        .auth-error { padding: var(--space-3); background: var(--color-error-muted); border: 1px solid rgba(251,86,91,0.3); border-radius: var(--radius-md); color: var(--color-error); font-size: var(--font-size-sm); text-align: center; }
         .auth-submit { width: 100%; margin-top: var(--space-2); }
         .auth-footer { text-align: center; margin-top: var(--space-6); font-size: var(--font-size-sm); display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
         .auth-link { color: var(--color-accent); font-weight: var(--font-weight-medium); }

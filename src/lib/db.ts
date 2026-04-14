@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 const globalForPrisma = globalThis as unknown as { prisma: any | undefined };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL || 'postgresql://coop:coop@localhost:5432/coop';
+  const connectionString = process.env.DATABASE_URL || 'postgresql://coop:coop@localhost:5433/coop';
   const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
   return new (PrismaClient as any)({ adapter });

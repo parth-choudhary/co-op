@@ -5,14 +5,14 @@ import { Plus, FolderKanban, Loader2, X, ArrowRight } from 'lucide-react';
 
 interface ProjectData { id: string; name: string; description: string | null; color: string; boards: Array<{ columns: Array<{ _count: { cards: number } }> }>; createdAt: string; }
 
-const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444', '#f97316'];
+const colors = ['#00d992', '#2fd6a1', '#818cf8', '#ec4899', '#4cb3d4', '#ffba00', '#fb565b', '#f97316'];
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', color: '#6366f1' });
+  const [form, setForm] = useState({ name: '', description: '', color: '#00d992' });
 
   useEffect(() => { fetch('/api/projects').then((r) => r.json()).then(setProjects).finally(() => setLoading(false)); }, []);
 
@@ -26,7 +26,7 @@ export default function ProjectsPage() {
         const proj = await res.json();
         setProjects((prev) => [proj, ...prev]);
         setShowModal(false);
-        setForm({ name: '', description: '', color: '#6366f1' });
+        setForm({ name: '', description: '', color: '#00d992' });
       }
     } finally { setCreating(false); }
   };
@@ -47,7 +47,7 @@ export default function ProjectsPage() {
 
       {projects.length === 0 ? (
         <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--space-16)', gap: 'var(--space-3)', textAlign: 'center' }}>
-          <FolderKanban size={48} style={{ opacity: 0.3 }} />
+          <FolderKanban size={48} style={{ color: 'var(--color-accent)', opacity: 0.3 }} />
           <p style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-medium)' }}>No projects yet</p>
           <p className="text-secondary">Create your first project to start managing tasks</p>
           <button className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => setShowModal(true)}><Plus size={16} />Create Project</button>
@@ -57,7 +57,7 @@ export default function ProjectsPage() {
           {projects.map((p) => (
             <Link key={p.id} href={`/projects/${p.id}`} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-5)', textDecoration: 'none', gap: 'var(--space-3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-lg)', background: `${p.color}20`, color: p.color }}><FolderKanban size={20} /></div>
+                <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-surface-border)', color: p.color }}><FolderKanban size={20} /></div>
                 <div style={{ flex: 1 }}><div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{p.name}</div>{p.description && <div className="text-tertiary text-sm" style={{ marginTop: 'var(--space-1)' }}>{p.description}</div>}</div>
                 <ArrowRight size={16} style={{ color: 'var(--color-text-tertiary)' }} />
               </div>
@@ -92,7 +92,7 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                   {colors.map((c) => (
                     <button key={c} type="button" onClick={() => setForm({ ...form, color: c })}
-                      style={{ width: 32, height: 32, borderRadius: 'var(--radius-full)', background: c, border: form.color === c ? '2px solid white' : '2px solid transparent', cursor: 'pointer', transition: 'all var(--transition-fast)' }} />
+                      style={{ width: 32, height: 32, borderRadius: 'var(--radius-full)', background: c, border: form.color === c ? '2px solid #f2f2f2' : '2px solid transparent', cursor: 'pointer', transition: 'all var(--transition-fast)' }} />
                   ))}
                 </div>
               </div>

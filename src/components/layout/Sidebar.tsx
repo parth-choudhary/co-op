@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gamepad2, LayoutDashboard, FolderKanban, MessageSquare, Bot, Settings, ChevronLeft, ChevronRight, Plus, LogOut } from 'lucide-react';
+import { Zap, LayoutDashboard, FolderKanban, MessageSquare, Bot, Settings, ChevronLeft, ChevronRight, Plus, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import styles from './Sidebar.module.css';
 
@@ -30,7 +30,7 @@ export default function Sidebar({ user, projects }: SidebarProps) {
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
       <div className={styles.header}>
         <Link href="/" className={styles.logo}>
-          <div className={styles.logoIcon}><Gamepad2 size={20} /></div>
+          <div className={styles.logoIcon}><Zap size={20} /></div>
           {!collapsed && <span className={styles.logoText}>Co-Op</span>}
         </Link>
         <button className={styles.toggle} onClick={() => setCollapsed(!collapsed)}>
@@ -81,7 +81,7 @@ export default function Sidebar({ user, projects }: SidebarProps) {
 
       <div className={styles.footer}>
         <div className={styles.user}>
-          <div className="avatar" style={{ background: 'var(--color-accent-gradient)' }}>{getInitials(user.name)}</div>
+          <div className="avatar" style={{ background: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>{getInitials(user.name)}</div>
           {!collapsed && (
             <div className={styles.userInfo}>
               <span className={styles.userName}>{user.name}</span>

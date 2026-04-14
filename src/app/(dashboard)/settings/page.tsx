@@ -46,12 +46,12 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)', color: 'var(--color-text-tertiary)' }}><Loader2 size={20} className="spin" /></div>
         ) : keys.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-8)', textAlign: 'center' }}>
-            <Key size={32} style={{ opacity: 0.3 }} /><p className="text-secondary">No API keys configured</p><p className="text-xs text-tertiary">Add an OpenAI or Anthropic key to power your AI agents</p>
+            <Key size={32} style={{ color: 'var(--color-accent)', opacity: 0.3 }} /><p className="text-secondary">No API keys configured</p><p className="text-xs text-tertiary">Add an OpenAI or Anthropic key to power your AI agents</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {keys.map((key) => (
-              <div key={key.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-3) var(--space-4)', background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+              <div key={key.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-3) var(--space-4)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-surface-border)', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{key.provider === 'anthropic' ? '🟣' : '🟢'} {key.provider.charAt(0).toUpperCase() + key.provider.slice(1)}</span>
                   {key.label && <span className="text-sm text-secondary">{key.label}</span>}
