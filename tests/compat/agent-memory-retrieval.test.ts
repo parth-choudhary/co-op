@@ -32,6 +32,10 @@ let lastFindManyArgs: any = null;
     lastFindManyArgs = args;
     return seedRows;
   },
+  // Phase 3: bumpLastRetrievedAtAgent runs after every fallback retrieval
+  // to keep stale-detection working in keyless setups too. The mock just
+  // records that it was called.
+  updateMany: async () => ({ count: 0 }),
 };
 (dbModule as any).agentActivityLog = {
   create: async () => {

@@ -31,6 +31,9 @@ let lastFindManyArgs: any = null;
     lastFindManyArgs = args;
     return seedRows;
   },
+  // Phase 3: bumpLastRetrievedAtProject runs after every fallback retrieval
+  // so stale-detection still tracks across keyless setups.
+  updateMany: async () => ({ count: 0 }),
 };
 (dbModule as any).agentActivityLog = {
   create: async () => {

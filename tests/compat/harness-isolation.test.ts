@@ -28,11 +28,13 @@ const memberCard = {
 (dbModule as any).aIAgent = {
   findUnique: async () => agentRow,
 };
-(dbModule as any).agentMemory = { findMany: async () => [] };
+(dbModule as any).agentMemory = { findMany: async () => [], updateMany: async () => ({ count: 0 }) };
 // Memory v2 (Phase 2): retrieveProjectMemories runs alongside retrieveMemories
 // for any agent with a projectId. Without this mock the test silently hits the
 // real database and slows down by ~2s per case.
-(dbModule as any).projectMemory = { findMany: async () => [] };
+// Memory v3 (Phase 3): updateMany covers the lastRetrievedAt bump that runs
+// after every retrieval pass.
+(dbModule as any).projectMemory = { findMany: async () => [], updateMany: async () => ({ count: 0 }) };
 (dbModule as any).agentContextSnapshot = { findUnique: async () => null };
 (dbModule as any).agentActivityLog = { findMany: async () => [], create: async () => ({}) };
 (dbModule as any).card = {

@@ -38,6 +38,7 @@ let agentActivityCreates: any[] = [];
     projectMemoryFindManyArgs.push(args);
     return [];
   },
+  updateMany: async () => ({ count: 0 }),
 };
 (dbModule as any).agentActivityLog = {
   create: async (args: any) => {
@@ -121,7 +122,10 @@ test('retrieveProjectMemories scopes findMany by the projectId argument, not by 
   // The where clause MUST reference projectId, not agentId. A caller passing
   // an agentId by mistake (the arg shapes look similar) would leak rows from
   // any project the agent doesn't belong to — this assertion guards that.
-  assert.deepEqual(projectMemoryFindManyArgs[0].where, { projectId: 'project-A' });
+  // Phase 3 adds `stale: false` to the same clause; we assert both fields
+  // explicitly so a future refactor that drops projectId scoping is caught.
+  assert.equal(projectMemoryFindManyArgs[0].where.projectId, 'project-A');
+  assert.equal(projectMemoryFindManyArgs[0].where.stale, false);
   assert.equal(
     Object.prototype.hasOwnProperty.call(projectMemoryFindManyArgs[0].where, 'agentId'),
     false,

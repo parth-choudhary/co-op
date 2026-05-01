@@ -196,12 +196,32 @@ interface RetrievedMemory {
  * unset, falls back to the legacy `findMany` path — byte-identical to the
  * pre–Memory-v1 behavior, so keyless / CLI-only deployments are unaffected.
  */
+async function bumpLastRetrievedAtAgent(ids: string[]) {
+  if (ids.length === 0) return;
+  await prisma.agentMemory.updateMany({
+    where: { id: { in: ids } },
+    data: { lastRetrievedAt: new Date() },
+  });
+}
+
+async function bumpLastRetrievedAtProject(ids: string[]) {
+  if (ids.length === 0) return;
+  await prisma.projectMemory.updateMany({
+    where: { id: { in: ids } },
+    data: { lastRetrievedAt: new Date() },
+  });
+}
+
 export async function retrieveMemories(agentId: string, triggerText: string | undefined): Promise<RetrievedMemory[]> {
   const fallback = async (): Promise<RetrievedMemory[]> => {
+    // Memory v3 / Phase 3: exclude stale rows from both paths. The flag is
+    // set by markStaleAgentMemories (kind='context' + idle 90d) or manually
+    // from the harness UI in Phase 4.
     const all = await prisma.agentMemory.findMany({
-      where: { agentId },
+      where: { agentId, stale: false },
       orderBy: [{ kind: 'asc' }, { updatedAt: 'desc' }],
     });
+    await bumpLastRetrievedAtAgent(all.map((m: { id: string }) => m.id));
     return all.map((m: { key: string; content: string; kind: string }) => ({
       key: m.key,
       content: m.content,
@@ -229,19 +249,21 @@ export async function retrieveMemories(agentId: string, triggerText: string | un
       FROM "AgentMemory"
       WHERE "agentId" = ${agentId}
         AND "embedding" IS NOT NULL
+        AND "stale" = false
       ORDER BY "embedding" <=> ${literal}::vector
       LIMIT 12
     ),
     prefs AS (
       SELECT "id", "key", "content", "kind", NULL::float8 AS score
       FROM "AgentMemory"
-      WHERE "agentId" = ${agentId} AND "kind" = 'preference'
+      WHERE "agentId" = ${agentId} AND "kind" = 'preference' AND "stale" = false
     ),
     recent_decisions AS (
       SELECT "id", "key", "content", "kind", NULL::float8 AS score
       FROM "AgentMemory"
       WHERE "agentId" = ${agentId}
         AND "kind" = 'decision'
+        AND "stale" = false
         AND "updatedAt" >= NOW() - INTERVAL '7 days'
     )
     SELECT DISTINCT ON ("id") "id", "key", "content", "kind", "score"
@@ -257,16 +279,19 @@ export async function retrieveMemories(agentId: string, triggerText: string | un
   // on purpose so the AgentContextSnapshot.stale flag isn't churned by every read
   // — that flag is meant to track state-changing events, not retrievals.
   if (rows.length > 0) {
-    await prisma.agentActivityLog.create({
-      data: {
-        agentId,
-        eventType: 'memory_retrieved',
-        payload: {
-          retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
-          query: triggerText.slice(0, 200),
+    await Promise.all([
+      prisma.agentActivityLog.create({
+        data: {
+          agentId,
+          eventType: 'memory_retrieved',
+          payload: {
+            retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
+            query: triggerText.slice(0, 200),
+          },
         },
-      },
-    });
+      }),
+      bumpLastRetrievedAtAgent(rows.map((r: RawRow) => r.id)),
+    ]);
   }
 
   return rows.map((r: RawRow) => ({
@@ -296,10 +321,14 @@ export async function retrieveProjectMemories(
   triggerText: string | undefined,
 ): Promise<RetrievedMemory[]> {
   const fallback = async (): Promise<RetrievedMemory[]> => {
+    // Memory v3 / Phase 3: exclude stale rows. ProjectMemory.stale today is
+    // only set manually from the harness UI; no automatic stale-marking pass
+    // for the project tier (no kind='context' there).
     const all = await prisma.projectMemory.findMany({
-      where: { projectId },
+      where: { projectId, stale: false },
       orderBy: [{ kind: 'asc' }, { updatedAt: 'desc' }],
     });
+    await bumpLastRetrievedAtProject(all.map((m: { id: string }) => m.id));
     return all.map((m: { key: string; content: string; kind: string }) => ({
       key: m.key,
       content: m.content,
@@ -322,19 +351,21 @@ export async function retrieveProjectMemories(
       FROM "ProjectMemory"
       WHERE "projectId" = ${projectId}
         AND "embedding" IS NOT NULL
+        AND "stale" = false
       ORDER BY "embedding" <=> ${literal}::vector
       LIMIT 12
     ),
     prefs AS (
       SELECT "id", "key", "content", "kind", NULL::float8 AS score
       FROM "ProjectMemory"
-      WHERE "projectId" = ${projectId} AND "kind" = 'preference'
+      WHERE "projectId" = ${projectId} AND "kind" = 'preference' AND "stale" = false
     ),
     recent_decisions AS (
       SELECT "id", "key", "content", "kind", NULL::float8 AS score
       FROM "ProjectMemory"
       WHERE "projectId" = ${projectId}
         AND "kind" = 'decision'
+        AND "stale" = false
         AND "updatedAt" >= NOW() - INTERVAL '7 days'
     )
     SELECT DISTINCT ON ("id") "id", "key", "content", "kind", "score"
@@ -347,17 +378,20 @@ export async function retrieveProjectMemories(
   `;
 
   if (rows.length > 0) {
-    await prisma.agentActivityLog.create({
-      data: {
-        agentId,
-        eventType: 'project_memory_retrieved',
-        payload: {
-          projectId,
-          retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
-          query: triggerText.slice(0, 200),
+    await Promise.all([
+      prisma.agentActivityLog.create({
+        data: {
+          agentId,
+          eventType: 'project_memory_retrieved',
+          payload: {
+            projectId,
+            retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
+            query: triggerText.slice(0, 200),
+          },
         },
-      },
-    });
+      }),
+      bumpLastRetrievedAtProject(rows.map((r: RawRow) => r.id)),
+    ]);
   }
 
   return rows.map((r: RawRow) => ({
