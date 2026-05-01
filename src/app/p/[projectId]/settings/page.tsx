@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Key, Plus, Trash2, Loader2, CheckCircle2, AlertCircle, X, Settings as SettingsIcon, Code2, ChevronRight, Sparkles, KeyRound, Box, Clock, BookOpen, Terminal } from 'lucide-react';
+import { Key, Plus, Trash2, Loader2, CheckCircle2, AlertCircle, X, Settings as SettingsIcon, Code2, ChevronRight, Sparkles, KeyRound, Box, Clock, BookOpen, Terminal, BrainCircuit } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 interface ModelKeyData { id: string; provider: string; label: string | null; isValid: boolean; lastUsedAt: string | null; createdAt: string; }
@@ -72,6 +72,18 @@ export default function ProjectSettingsPage() {
           <div>
             <h2 className="heading-4">Doctrine — USER.md &amp; AGENTS.md</h2>
             <p className="text-sm text-tertiary">Who the agents serve and the house rules they all follow. Admin-only.</p>
+          </div>
+        </div>
+        <ChevronRight size={18} style={{ color: 'var(--color-text-tertiary)' }} />
+      </Link>
+
+      {/* Project Memory */}
+      <Link href={`/p/${projectId}/settings/memory`} className="glass-panel" style={{ padding: 'var(--space-5) var(--space-6)', marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', color: 'var(--color-accent)' }}>
+          <BrainCircuit size={20} />
+          <div>
+            <h2 className="heading-4">Project memory</h2>
+            <p className="text-sm text-tertiary">Decisions, glossary, conventions, and facts every agent in the project reads on every run.</p>
           </div>
         </div>
         <ChevronRight size={18} style={{ color: 'var(--color-text-tertiary)' }} />
