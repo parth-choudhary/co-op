@@ -378,12 +378,18 @@ model ProjectMemory {
   sourceRef String?
   writtenBy String?
   embedding Unsupported("vector(1536)")?
+  // Lifecycle (Memory v3): stale rows are excluded from compileHarness
+  // retrieval. lastRetrievedAt is updated on every retrieval and drives
+  // the stale-detection pass for kind='context' rows.
+  stale     Boolean  @default(false)
+  lastRetrievedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([projectId, key])
   @@index([projectId])
   @@index([projectId, kind])
+  @@index([projectId, stale])
 }
 
 model AgentMemory {
@@ -400,12 +406,18 @@ model AgentMemory {
   // fall back to the non-vector load path). 1536 dims = OpenAI text-embedding-3-small.
   // The HNSW cosine index is created in migration 20260501010000.
   embedding Unsupported("vector(1536)")?
+  // Lifecycle (Memory v3): stale rows are excluded from compileHarness
+  // retrieval. lastRetrievedAt is updated on every retrieval and drives
+  // the stale-detection pass for kind='context' rows.
+  stale     Boolean  @default(false)
+  lastRetrievedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([agentId, key])
   @@index([agentId])
   @@index([agentId, kind])
+  @@index([agentId, stale])
 }
 
 model AgentActivityLog {
