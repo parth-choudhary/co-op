@@ -1,13 +1,13 @@
 # Project State
 
-**Last activity:** 2026-05-01 — completed Memory v1 Phase 1 (embedding-rank retrieval). 7 commits, 73 tests pass, awaiting live OpenAI-key verification.
+**Last activity:** 2026-05-01 — Phase 2 planned. PLAN.md ready at `.planning/phases/02-memory-v2-project-tier/02-01-PLAN.md`. 8 tasks across model + API + tool + harness + UI + 2 tests + docs.
 
 ## Current Position
 
 - **Branch:** `main`
 - **Active milestone:** Memory v1–v4
-- **Next phase:** Phase 2 — Memory v2 (project-tier shared memory). Run `/gsd-plan-phase 2` when ready.
-- **Mode:** quick (direct implementation; future phases via `/gsd-plan-phase`)
+- **Active phase:** Phase 2 — Memory v2 (PLANNED, awaiting execution). Run `/gsd-execute-phase 2` to ship.
+- **Mode:** quick (direct implementation; planning written by hand because gsd-sdk isn't installed and the heavyweight plan-phase chain isn't load-bearing for well-scoped milestones)
 
 ## What's in flight
 
