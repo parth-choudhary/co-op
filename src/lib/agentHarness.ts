@@ -277,29 +277,125 @@ export async function retrieveMemories(agentId: string, triggerText: string | un
   }));
 }
 
+/**
+ * Project-tier memory retrieval (Memory v2 / Phase 2).
+ *
+ * Same shape as retrieveMemories — three-source CTE with top-12 cosine + all
+ * preferences + recent decisions, deduped by id — but scoped by projectId
+ * instead of agentId. Audit-logged to AgentActivityLog with the agent that
+ * triggered the read so Phase 4's per-agent retrieval view shows both tiers
+ * in one timeline.
+ *
+ * Falls back to legacy findMany when triggerText is empty / OPENAI_API_KEY is
+ * unset / the embedding call fails — keyless contract is preserved across
+ * both memory tiers.
+ */
+export async function retrieveProjectMemories(
+  agentId: string,
+  projectId: string,
+  triggerText: string | undefined,
+): Promise<RetrievedMemory[]> {
+  const fallback = async (): Promise<RetrievedMemory[]> => {
+    const all = await prisma.projectMemory.findMany({
+      where: { projectId },
+      orderBy: [{ kind: 'asc' }, { updatedAt: 'desc' }],
+    });
+    return all.map((m: { key: string; content: string; kind: string }) => ({
+      key: m.key,
+      content: m.content,
+      kind: m.kind,
+    }));
+  };
+
+  if (!triggerText || !triggerText.trim() || !isEmbeddingEnabled()) return fallback();
+
+  const queryVec = await embedText(triggerText);
+  if (!queryVec) return fallback();
+
+  const literal = toVectorLiteral(queryVec);
+
+  type RawRow = { id: string; key: string; content: string; kind: string; score: number | null };
+  const rows = await prisma.$queryRaw<RawRow[]>`
+    WITH ranked AS (
+      SELECT "id", "key", "content", "kind",
+             (1 - ("embedding" <=> ${literal}::vector))::float8 AS score
+      FROM "ProjectMemory"
+      WHERE "projectId" = ${projectId}
+        AND "embedding" IS NOT NULL
+      ORDER BY "embedding" <=> ${literal}::vector
+      LIMIT 12
+    ),
+    prefs AS (
+      SELECT "id", "key", "content", "kind", NULL::float8 AS score
+      FROM "ProjectMemory"
+      WHERE "projectId" = ${projectId} AND "kind" = 'preference'
+    ),
+    recent_decisions AS (
+      SELECT "id", "key", "content", "kind", NULL::float8 AS score
+      FROM "ProjectMemory"
+      WHERE "projectId" = ${projectId}
+        AND "kind" = 'decision'
+        AND "updatedAt" >= NOW() - INTERVAL '7 days'
+    )
+    SELECT DISTINCT ON ("id") "id", "key", "content", "kind", "score"
+    FROM (
+      SELECT * FROM ranked
+      UNION ALL SELECT * FROM prefs
+      UNION ALL SELECT * FROM recent_decisions
+    ) merged
+    ORDER BY "id", "score" DESC NULLS LAST
+  `;
+
+  if (rows.length > 0) {
+    await prisma.agentActivityLog.create({
+      data: {
+        agentId,
+        eventType: 'project_memory_retrieved',
+        payload: {
+          projectId,
+          retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
+          query: triggerText.slice(0, 200),
+        },
+      },
+    });
+  }
+
+  return rows.map((r: RawRow) => ({
+    key: r.key,
+    content: r.content,
+    kind: r.kind,
+    score: r.score ?? undefined,
+  }));
+}
+
 export async function compileHarness(agentId: string, ctx: HarnessContext = {}): Promise<string> {
-  const [agent, memories, snapshot, recentActivity, kanban] = await Promise.all([
-    prisma.aIAgent.findUnique({ where: { id: agentId } }),
+  // Two-phase fetch. The agent record drives projectId-scoped queries
+  // (project memory + project doctrine), so we resolve it first, then
+  // parallelize everything else. Net round-trips: 2 (was: 3 — the project
+  // doctrine fetch used to be sequential AFTER the Promise.all).
+  const agent = await prisma.aIAgent.findUnique({ where: { id: agentId } });
+  if (!agent) throw new Error('Agent not found');
+
+  const [memories, projectMemories, snapshot, recentActivity, kanban, project] = await Promise.all([
     retrieveMemories(agentId, ctx.triggerText),
+    agent.projectId
+      ? retrieveProjectMemories(agentId, agent.projectId, ctx.triggerText)
+      : Promise.resolve([] as RetrievedMemory[]),
     prisma.agentContextSnapshot.findUnique({ where: { agentId } }),
     prisma.agentActivityLog.findMany({ where: { agentId }, orderBy: { createdAt: 'desc' }, take: 20 }),
     getAgentKanbanContext(agentId),
+    agent.projectId
+      ? prisma.project.findUnique({
+          where: { id: agent.projectId },
+          select: {
+            name: true,
+            about: true, aboutUpdatedAt: true,
+            userMd: true, userMdUpdatedAt: true,
+            agentsMd: true, agentsMdUpdatedAt: true,
+          },
+        })
+      : Promise.resolve(null),
   ]);
-  if (!agent) throw new Error('Agent not found');
-
-  // Project-level doctrine: About (north star), USER.md (who you serve), AGENTS.md (rules of the house).
-  // USER.md and AGENTS.md are admin-edited and inherited by every agent in the project.
-  const project = agent.projectId
-    ? await prisma.project.findUnique({
-        where: { id: agent.projectId },
-        select: {
-          name: true,
-          about: true, aboutUpdatedAt: true,
-          userMd: true, userMdUpdatedAt: true,
-          agentsMd: true, agentsMdUpdatedAt: true,
-        },
-      })
-    : null;
 
   const parts: string[] = [];
   parts.push(`# ${agent.name} (${agent.roleLabel})`);
@@ -382,6 +478,23 @@ export async function compileHarness(agentId: string, ctx: HarnessContext = {}):
     parts.push('\n## Memory');
     const byKind: Record<string, Array<{ key: string; content: string; kind: string }>> = {};
     for (const m of memories as Array<{ key: string; content: string; kind: string }>) {
+      (byKind[m.kind] ||= []).push(m);
+    }
+    for (const [kind, items] of Object.entries(byKind)) {
+      parts.push(`\n### ${kind}`);
+      for (const m of items) parts.push(`- **${m.key}**: ${m.content}`);
+    }
+  }
+
+  // Project memory tier — shared across every agent in the project. Rendered
+  // separately from per-agent memory so the model can distinguish "I learned
+  // this" from "we as a team learned this". Agents write here via the
+  // set_project_memory tool; humans write via the project settings UI.
+  if (projectMemories.length > 0) {
+    parts.push('\n## Project Memory');
+    parts.push('_(Shared with every agent in this project. Decisions, glossary, and conventions live here. Use `set_project_memory` to add to this tier when you learn something the team should benefit from.)_');
+    const byKind: Record<string, Array<{ key: string; content: string; kind: string }>> = {};
+    for (const m of projectMemories as Array<{ key: string; content: string; kind: string }>) {
       (byKind[m.kind] ||= []).push(m);
     }
     for (const [kind, items] of Object.entries(byKind)) {
