@@ -217,4 +217,7 @@ npx tsx scripts/test-coding-integration.ts
 
 ## License
 
-Private. See repo settings.
+No license has been set yet — the repo is source-available on GitHub but
+you do not have an explicit grant to copy, modify, or redistribute. If
+you'd like to use Co-Op, [open an issue](https://github.com/parth-choudhary/co-op/issues)
+to start a conversation.
