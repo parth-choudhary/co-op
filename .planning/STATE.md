@@ -1,26 +1,27 @@
 # Project State
 
-**Last activity:** 2026-05-01 — bootstrapped GSD planning + started Memory v1 (Phase 1: embedding-rank retrieval).
+**Last activity:** 2026-05-01 — completed Memory v1 Phase 1 (embedding-rank retrieval). 7 commits, 73 tests pass, awaiting live OpenAI-key verification.
 
 ## Current Position
 
 - **Branch:** `main`
 - **Active milestone:** Memory v1–v4
-- **Active phase:** Phase 1 — Memory v1 (embedding-rank retrieval)
+- **Next phase:** Phase 2 — Memory v2 (project-tier shared memory). Run `/gsd-plan-phase 2` when ready.
 - **Mode:** quick (direct implementation; future phases via `/gsd-plan-phase`)
 
 ## What's in flight
 
-Phase 1 implementation — pgvector migration, OpenAI embedding wrapper with keyless fallback, vector retrieval in `compileHarness`, retrieval audit log. Tracked as a quick task at `.planning/quick/20260501-memory-v1-embedding-rank/`.
+Nothing in flight. Phase 1 is code-complete; Phase 2 hasn't been planned yet.
 
 ## Blockers/Concerns
 
-- None.
+- **Live verification of Phase 1.** With `OPENAI_API_KEY` set, restart the dev server, write 5+ memories with varied content for one agent, send a topical message, and confirm `AgentActivityLog` records a `memory_retrieved` row whose `retrieved` payload contains only the relevant keys. Without a key, the keyless-fallback unit tests already cover the regression guard.
 
 ## Quick Tasks Completed
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 20260501-memory-v1-embedding-rank | Memory v1: embedding-ranked retrieval (pgvector + OpenAI embeddings + keyless fallback + audit log) | 2026-05-01 | `8be8526` | Code-complete (live verification pending) | [20260501-memory-v1-embedding-rank](./quick/20260501-memory-v1-embedding-rank/) |
 
 ## Notes
 

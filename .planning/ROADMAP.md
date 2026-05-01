@@ -12,7 +12,7 @@ The design borrows the strongest idea from `claude-os` (relevance-ranked retriev
 
 ### Phase 1 — Memory v1: Embedding-ranked retrieval
 
-**Status:** IN_PROGRESS
+**Status:** CODE_COMPLETE (live verification with OpenAI key pending — see `.planning/STATE.md` Blockers)
 **Why:** Stop dumping all memories into every prompt. Surface only what's relevant to the current run, with safe fallbacks for keyless setups.
 
 **Scope:**
