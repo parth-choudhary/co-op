@@ -130,12 +130,77 @@
 
 ## Traceability
 
-> Filled by the roadmapper. Maps every v1 REQ-ID to exactly one phase. Empty until ROADMAP.md is generated.
+> Maps every v1 REQ-ID to exactly one phase. Mirrors `ROADMAP.md` Phase Details.
 
 | REQ-ID | Phase | Notes |
 |--------|-------|-------|
-| _(populated by roadmapper)_ | | |
+| RUN-01 | Phase 1 | `AgentTaskRun` row + heartbeat + `HarnessSnapshot` FK (plan 01-01) |
+| RUN-02 | Phase 1 | `AgentRunEvent` append-only ledger writer (plan 01-01) |
+| RUN-03 | Phase 1 | `buildHarness` deterministic refactor (plan 01-02) |
+| RUN-04 | Phase 1 | `HarnessSnapshot` capture at run start (plan 01-02) |
+| RUN-05 | Phase 1 | `RunDiff` structured before/after model (plan 01-01) |
+| RUN-06 | Phase 1 | `instrumentation.ts` + OTel + Langfuse + commented `docker-compose.yml` (plan 01-03) |
+| REL-01 | Phase 2 | Bounded retries with `p-retry` + `AbortSignal` (plan 02-01) |
+| REL-02 | Phase 2 | Iteration cap + wall-clock budget + `cap_exceeded` event (plan 02-01) |
+| REL-03 | Phase 2 | Tool-call idempotency via `WebhookIdempotency.tool:<name>` (plan 02-01) |
+| REL-04 | Phase 2 | Subprocess watchdog + isolated `HOME` + boot-time reaper (plan 02-02) |
+| REL-05 | Phase 2 | Tool-output quarantine envelope + classifier (plan 02-02) |
+| REL-06 | Phase 2 | Run-mode flag on `AIAgent` (plan 02-03) |
+| REL-07 | Phase 2 | Manual retry / re-run / cancel API + buttons (plan 02-03) |
+| REL-08 | Phase 2 | "Stuck" self-escalation notification (plan 02-03) |
+| REL-09 | Phase 2 | CONCERNS.md fixes (atomic move, encrypted keys, cross-tenant audit, Zod) (plan 02-04) |
+| AUD-01 | Phase 3 | `/p/[projectId]/runs` list + filters (plan 03-01) |
+| AUD-02 | Phase 3 | Run-detail timeline (`RunTimeline`) (plan 03-02) |
+| AUD-03 | Phase 3 | Ledger-derived plain-language summary (plan 03-02) |
+| AUD-04 | Phase 3 | Unified diff view with negative-space deletes (plan 03-03) |
+| AUD-05 | Phase 3 | Two-tier logs (`activity` vs `trace`) (plan 03-04) |
+| AUD-06 | Phase 3 | Redactor middleware + secret fuzz test (plan 03-04) |
+| AUD-07 | Phase 3 | One-click revert via stored inverse-ops (plan 03-03) |
+| AUD-08 | Phase 3 | Cost / token aggregation per run / agent / project (plan 03-01) |
+| AUD-09 | Phase 3 | Sonner-based run lifecycle toasts (plan 03-04) |
+| PLAN-01 | Phase 4 | `CardPlan` Prisma model + Zod step schema + `contentHash` (plan 04-01) |
+| PLAN-02 | Phase 4 | `planning` built-in plugin (propose-only) (plan 04-02) |
+| PLAN-03 | Phase 4 | `/p/[projectId]/plans` queue + `pending` transition (plan 04-03) |
+| PLAN-04 | Phase 4 | Hash-bound approval enforcement (plan 04-01) |
+| PLAN-05 | Phase 4 | Amendment cap (2 per run) + `amendment_cap_exceeded` (plan 04-02) |
+| PLAN-06 | Phase 4 | Runtime refusal of out-of-plan tool calls (plan 04-02) |
+| PLAN-07 | Phase 5 | Ghost-card rendering on kanban + atomic flip on approve (plan 05-02) |
+| PLAN-08 | Phase 4 | Planner agent template (plan 04-04) |
+| PLAN-09 | Phase 4 | `/plans` queue tiered-action UI (plan 04-03) |
+| PLAN-10 | Phase 4 | False-approve telemetry counter in `/runs` aggregates (plan 04-04) |
+| MOB-01 | Phase 1 | `<meta viewport>` declaration on every page (plan 01-04) |
+| MOB-02 | Phase 1 | `tokens.css` breakpoint + safe-area helpers (plan 01-04) |
+| MOB-03 | Phase 1 | Sidebar → vaul Drawer at <768px (plan 01-04) |
+| MOB-04 | Phase 1 | Modals → vaul BottomSheet at <768px (plan 01-04) |
+| MOB-05 | Phase 5 | Kanban single-column pager with scroll-snap (plan 05-01) |
+| MOB-06 | Phase 5 | "Move to…" non-drag fallback picker (plan 05-01) |
+| MOB-07 | Phase 5 | Chat list/detail stack at <768px (plan 05-01) |
+| MOB-08 | Phase 5 | Visual Viewport composer over soft keyboard (plan 05-01) |
+| MOB-09 | Phase 3 | 44×44pt touch-target audit pass (plan 03-05) |
+| MOB-10 | Phase 3 | `:hover` / `:focus-visible` / `:active` parity audit (plan 03-05) |
+| MOB-11 | Phase 3 | Login / register / settings no-overflow at 375×667 (plan 03-05) |
+| MOB-12 | Phase 1 | PWA manifest + installable to home screen (plan 01-04) |
+| MOB-13 | Phase 5 | Service worker + Web Push pipeline + deep links (plan 05-03) |
+| MOB-14 | Phase 5 | Tap-to-approve / tap-to-revert / tap-to-cancel on phone (plan 05-03) |
+| M2P-01 | Phase 6 | Plugin / skill / template contract regression test (plan 06-01) |
+| M2P-02 | Phase 6 | Code Reviewer example trio composed end-to-end (plan 06-01) |
+| M2P-03 | Phase 6 | `CardPlan` carries marketing-campaign brief (contract test) (plan 06-01) |
+| M2P-04 | Phase 6 | Anti-slop linter design note (plan 06-02) |
+| M2P-05 | Phase 6 | Anti-claim linter design note (plan 06-02) |
+| M2P-06 | Phase 6 | Per-project secret + attribution scoping regression (plan 06-02) |
+
+**Coverage:** 54 / 54 v1 requirements mapped to exactly one phase. No orphans, no duplicates.
+
+| Phase | Requirement count |
+|-------|-------------------|
+| 1 | 11 (RUN-01..06, MOB-01..04, MOB-12) |
+| 2 | 9 (REL-01..09) |
+| 3 | 12 (AUD-01..09, MOB-09..11) |
+| 4 | 9 (PLAN-01..06, PLAN-08..10) |
+| 5 | 7 (PLAN-07, MOB-05..08, MOB-13, MOB-14) |
+| 6 | 6 (M2P-01..06) |
+| **Total** | **54** |
 
 ---
 
-*Last updated: 2026-05-01 after initialization*
+*Last updated: 2026-05-01 after roadmap creation.*

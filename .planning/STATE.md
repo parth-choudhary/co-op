@@ -1,36 +1,80 @@
 # Project State
 
-**Last activity:** 2026-05-01 — Phase 2 shipped. Project-tier shared memory live across API + agent tool + harness + settings UI. 8 commits, 81 tests pass (was 73), awaiting live UI smoke + vector-path verification with OpenAI key.
+## Project Reference
+
+See: `.planning/PROJECT.md` (updated 2026-05-01)
+
+**Core value:** Shared workspace fabric — humans and agents work in the same UI surfaces (boards, cards, chat).
+**Current focus:** Milestone 1 (Trust Foundation) → Phase 1: Run-lifecycle substrate + mobile primitives.
 
 ## Current Position
 
-- **Branch:** `main`
-- **Active milestone:** Memory v1–v4
-- **Phase status:** Phase 1 + 2 CODE_COMPLETE (live verification pending). Phases 3 + 4 PENDING.
-- **Next phase:** Phase 4 — retrieval audit UI — directly maps to M1's "agent visibility / audit". Phase 3 (lifecycle) is value-additive but doesn't sit on the M1 active list. Run `/gsd-plan-phase 4` when ready.
-- **Mode:** quick (direct implementation; planning written by hand because gsd-sdk isn't installed and the heavyweight plan-phase chain isn't load-bearing for well-scoped milestones)
+- Milestone: M1 — Trust foundation for "co-op runs co-op"
+- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives)
+- Plan: 0 of 4 in current phase
+- Status: Ready to plan (run `/gsd-plan-phase 1`)
+- Last activity: 2026-05-01 — M1 ROADMAP.md created from canonical 5-phase research synthesis (split into 6 phases at standard granularity).
 
-## What's in flight
+Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 
-Nothing in flight. Phase 1 is code-complete; Phase 2 hasn't been planned yet.
+## Performance Metrics
 
-## Blockers/Concerns
+**Velocity:**
+- Total M1 plans completed: 0
+- Average duration: —
+- Total M1 execution time: —
 
-- **Live verification of Phase 1.** With `OPENAI_API_KEY` set, restart the dev server, write 5+ memories with varied content for one agent, send a topical message, and confirm `AgentActivityLog` records a `memory_retrieved` row whose `retrieved` payload contains only the relevant keys. Without a key, the keyless-fallback unit tests already cover the regression guard.
+**By Phase:**
 
-## Quick Tasks Completed
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 1 | 0 / 4 | — | — |
+| 2 | 0 / 4 | — | — |
+| 3 | 0 / 5 | — | — |
+| 4 | 0 / 4 | — | — |
+| 5 | 0 / 3 | — | — |
+| 6 | 0 / 2 | — | — |
 
-| # | Description | Date | Commit | Status | Directory |
-|---|-------------|------|--------|--------|-----------|
-| 20260501-memory-v1-embedding-rank | Memory v1: embedding-ranked retrieval (pgvector + OpenAI embeddings + keyless fallback + audit log) | 2026-05-01 | `8be8526` | Code-complete (live verification pending) | [20260501-memory-v1-embedding-rank](./quick/20260501-memory-v1-embedding-rank/) |
+**Recent Trend:** —
 
-## Phases Completed
+*Updated after each plan completion.*
+
+## Accumulated Context
+
+### Decisions
+
+Decisions are logged in `PROJECT.md` Key Decisions table. Roadmap-level decisions resolved 2026-05-01:
+
+- CONCERNS.md fixes interleaved into Phase 2 (plan 02-04), no separate sub-phase.
+- PWA manifest ships P1 (MOB-12), push pipeline P5 (MOB-13).
+- Run-mode flag is per-agent for M1; per-project deferred to v2.
+- Langfuse opt-in via env; commented-out self-host stanza in `docker-compose.yml` from P1.
+- P6 composition example = Code Reviewer (M2P-02).
+
+### Pending Todos
+
+None yet (M1 just initialized).
+
+### Blockers/Concerns
+
+- **Live verification of pre-M1 Memory v1.** With `OPENAI_API_KEY` set, restart the dev server, write 5+ memories with varied content for one agent, send a topical message, and confirm `AgentActivityLog` records a `memory_retrieved` row whose `retrieved` payload contains only the relevant keys. This is unrelated to M1 plan execution but should be cleared before Phase 3 (audit) begins, since AUD-02's timeline reads from the same activity log.
+
+## Deferred Items
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| Memory | Memory v3 (lifecycle / dedup) — pre-M1 milestone residual | Deferred (post-M1 or as inserted decimal phase if needed) | 2026-05-01 |
+| Memory | Memory v4 (retrieval audit UI) — overlaps with M1 P3 audit surfaces | Deferred (revisit during P3 planning if integration is desirable) | 2026-05-01 |
+
+## Prior Work (Pre-M1)
 
 | Phase | Title | Date | Final commit | Status | Directory |
 |-------|-------|------|--------------|--------|-----------|
-| 2 | Memory v2: project-tier shared memory | 2026-05-01 | `1b2d3bc` | Code-complete (live UI + vector verification pending) | [02-memory-v2-project-tier](./phases/02-memory-v2-project-tier/) |
+| Memory v1 | Embedding-ranked retrieval (pgvector + OpenAI embeddings + keyless fallback + audit log) | 2026-05-01 | `8be8526` | Code-complete (live verification pending) | `quick/20260501-memory-v1-embedding-rank/` |
+| Memory v2 | Project-tier shared memory | 2026-05-01 | `1b2d3bc` | Code-complete (live UI + vector verification pending) | `phases/02-memory-v2-project-tier/` |
 
-## Notes
+## Session Continuity
 
-- This project did not go through `/gsd-new-project` — `.planning/codebase/` was generated by `/gsd-map-codebase` in April 2026. PROJECT.md / STATE.md / ROADMAP.md were bootstrapped on 2026-05-01 to enable phase tracking for the Memory v1–v4 milestone.
-- `gsd-sdk` is not on PATH; the heavy `/gsd-quick --research --validate` chain cannot run. Using direct implementation with TaskCreate tracking + atomic commits, scoped to a quick-task directory for parity with GSD layout.
+Last session: 2026-05-01 — M1 roadmap created.
+Stopped at: ROADMAP.md + STATE.md + REQUIREMENTS.md traceability written; ready for `/gsd-plan-phase 1`.
+Resume file: None.
