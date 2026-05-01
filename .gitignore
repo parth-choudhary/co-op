@@ -48,3 +48,9 @@ next-env.d.ts
 
 # pm2 runtime logs
 /logs/
+
+# Synapse runtime artifacts — keys are per-deployment, media is user data
+/docker/synapse/*.signing.key
+/docker/synapse/media_store/
+/docker/synapse/homeserver.db
+/docker/synapse/*.log
