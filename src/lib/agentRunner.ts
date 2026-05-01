@@ -133,7 +133,13 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   const apiKey = await getApiKey(agent.projectId, agent.modelProvider);
   if (!apiKey) throw new Error(`No API key configured for ${agent.modelProvider}`);
 
-  const system = await compileHarness(opts.agentId, opts.harnessContext || {});
+  // Default triggerText to the userPrompt so the harness can pull relevant
+  // memories without every caller having to populate it explicitly. Callers
+  // with richer context (e.g. card-driven runs that want title+description)
+  // can override by setting harnessContext.triggerText themselves.
+  const baseCtx = opts.harnessContext || {};
+  const triggerText = baseCtx.triggerText ?? opts.userPrompt;
+  const system = await compileHarness(opts.agentId, { ...baseCtx, triggerText });
   const userContent = opts.extraContext
     ? `${opts.extraContext}\n\n---\n\n${opts.userPrompt}`
     : opts.userPrompt;
