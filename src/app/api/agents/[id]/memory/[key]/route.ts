@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import { verifyAgentAccess, logAgentActivity } from '@/lib/agentHarness';
+import { embedText, toVectorLiteral } from '@/lib/embeddings';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; key: string }> }) {
   const session = await auth();
@@ -25,7 +26,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { agentId_key: { agentId: id, key: decodeURIComponent(key) } },
     data: { content: data.content, kind: data.kind, source: data.source, sourceRef: data.sourceRef },
   });
-  await logAgentActivity(id, 'memory_written', { key: memory.key, kind: memory.kind });
+  // Re-embed only when content was actually included in the update — kind/source/
+  // sourceRef edits don't change the semantics worth re-indexing for.
+  let embedded = false;
+  if (typeof data.content === 'string' && data.content.trim()) {
+    const vec = await embedText(data.content);
+    if (vec) {
+      await prisma.$executeRaw`UPDATE "AgentMemory" SET "embedding" = ${toVectorLiteral(vec)}::vector WHERE "id" = ${memory.id}`;
+      embedded = true;
+    }
+  }
+  await logAgentActivity(id, 'memory_written', { key: memory.key, kind: memory.kind, embedded });
   return NextResponse.json(memory);
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import { verifyAgentAccess, logAgentActivity } from '@/lib/agentHarness';
+import { embedText, toVectorLiteral } from '@/lib/embeddings';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -36,6 +37,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     create: { agentId: id, key, content, kind, source, sourceRef: data.sourceRef || null },
     update: { content, kind, source, sourceRef: data.sourceRef || null },
   });
-  await logAgentActivity(id, 'memory_written', { key, kind, source });
+  // Best-effort embedding write. Falls through silently when OPENAI_API_KEY is
+  // unset or the embedding call fails — the column stays NULL and compileHarness
+  // falls back to the non-vector load path. We use $executeRaw because Prisma
+  // can't bind Unsupported("vector(1536)") through normal upsert/update.
+  const vec = await embedText(content);
+  if (vec) {
+    await prisma.$executeRaw`UPDATE "AgentMemory" SET "embedding" = ${toVectorLiteral(vec)}::vector WHERE "id" = ${memory.id}`;
+  }
+  await logAgentActivity(id, 'memory_written', { key, kind, source, embedded: !!vec });
   return NextResponse.json(memory);
 }
