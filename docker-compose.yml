@@ -1,6 +1,10 @@
 services:
   db:
-    image: postgres:16-alpine
+    # pgvector/pgvector ships Postgres 16 with the `vector` extension preinstalled.
+    # Required by migration 20260501010000_add_pgvector_agent_memory and onward.
+    # Volume from the previous `postgres:16-alpine` image stays compatible — the
+    # cluster format is identical, only the extension catalog differs.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: coop
       POSTGRES_PASSWORD: coop

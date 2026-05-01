@@ -370,6 +370,11 @@ model AgentMemory {
   kind      String   @default("fact")
   source    String   @default("manual")
   sourceRef String?
+  // pgvector embedding of `content` for relevance-ranked retrieval in
+  // compileHarness. NULL when no OPENAI_API_KEY is configured (keyless setups
+  // fall back to the non-vector load path). 1536 dims = OpenAI text-embedding-3-small.
+  // The HNSW cosine index is created in migration 20260501010000.
+  embedding Unsupported("vector(1536)")?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
