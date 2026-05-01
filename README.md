@@ -31,8 +31,6 @@ Co-Op is a self-hostable team workspace built around the idea that AI agents sho
 ### Team chat
 ![Team chat](docs/screenshots/07-chat.png)
 
-> Drop your own captures into [`docs/screenshots/`](docs/screenshots/README.md) using the filenames above.
-
 ---
 
 ## Features
@@ -57,67 +55,71 @@ Co-Op is a self-hostable team workspace built around the idea that AI agents sho
 - **Docker** (for Postgres + Synapse) — or your own Postgres on `:5433`
 - An **Anthropic** or **OpenAI** API key, *or* the `claude` / `codex` CLI installed for keyless mode
 
-### 1. Install
+### One-command setup
 
 ```bash
 git clone https://github.com/parth-choudhary/co-op.git
 cd co-op
-npm install
+npm run setup:start
 ```
 
-### 2. Configure environment
+That's it. `npm run setup:start` does the whole bring-up and then runs the dev server:
 
-Copy and edit:
+1. Installs npm dependencies
+2. Creates `.env` from `.env~` (with a freshly generated `NEXTAUTH_SECRET`)
+3. Generates the per-deployment Synapse signing key
+4. Boots Postgres + Synapse via `docker compose`
+5. Runs `prisma migrate deploy` + `prisma generate`
+6. Provisions a Synapse admin user, captures its access token, and writes it to `.env` as `MATRIX_ADMIN_TOKEN`
+7. Provisions Matrix accounts for any existing agents
+8. Starts the dev server on <http://localhost:3000>
+
+The script is **idempotent** — safe to re-run. Each step skips when already done.
+
+If you want to do steps 1–7 without starting the dev server (useful for CI or PM2-based runs), use:
 
 ```bash
-cp .env~ .env   # or create one — see template below
+npm run setup
 ```
 
-Minimum `.env`:
+> Behind the scenes this is `bash scripts/setup.sh` — read the script if you want to see exactly what it does, or run individual steps by hand.
 
-```ini
-DATABASE_URL="postgresql://coop:coop@localhost:5433/coop"
-NEXTAUTH_SECRET="<run: openssl rand -base64 32>"
-NEXTAUTH_URL="http://localhost:3000"
-MATRIX_HOMESERVER_URL="http://localhost:8008"
-MATRIX_ADMIN_TOKEN="<see step 3>"
-COOP_LOCAL_MODE="1"
-```
+### What got booted
 
-### 3. Boot Postgres + Synapse
+- **Postgres** on `localhost:5433` (database `coop`, user `coop`/`coop`)
+- **Synapse** (Matrix homeserver) on `localhost:8008`, server name `coop.local`
+- **Next.js** dev server on `localhost:3000`
 
-```bash
-docker compose up -d
-```
+Open <http://localhost:3000>, register a user, create a project, and you're in.
 
-This brings up:
-- Postgres on `localhost:5433` (database: `coop`, user: `coop`/`coop`)
-- Synapse (Matrix homeserver) on `localhost:8008` with server name `coop.local`
+### After creating new agents
 
-First Synapse boot needs a one-time admin user — see `docker/synapse/` for the generated config and use Synapse's `register_new_matrix_user` to create one, then put its access token into `MATRIX_ADMIN_TOKEN`.
-
-### 4. Migrate the database
-
-```bash
-npx prisma migrate deploy
-npx prisma generate
-```
-
-### 5. Run the dev server
-
-```bash
-npm run dev
-```
-
-Open <http://localhost:3000>. Register a user, create a project, and you're in.
-
-### 6. Provision agent Matrix accounts (first time only)
-
-After you create your first agent, give it a Matrix identity so it can post in chat:
+The setup script auto-provisions Matrix accounts for any agents that exist when it runs. If you create more agents later, give them Matrix identities with:
 
 ```bash
 npx tsx scripts/provision-agent-matrix.ts
 ```
+
+### Manual setup (if you'd rather not use the script)
+
+<details>
+<summary>Step-by-step equivalent</summary>
+
+```bash
+npm install
+cp .env~ .env                                    # then edit NEXTAUTH_SECRET, etc.
+docker run --rm -v "$(pwd)/docker/synapse:/data" \
+  -e SYNAPSE_SERVER_NAME=coop.local -e SYNAPSE_REPORT_STATS=no \
+  matrixdotorg/synapse:latest generate           # one-time signing key
+docker compose up -d
+npx prisma migrate deploy && npx prisma generate
+docker compose exec synapse register_new_matrix_user \
+  -c /data/homeserver.yaml http://localhost:8008  # creates admin, paste token into .env
+npm run dev
+npx tsx scripts/provision-agent-matrix.ts        # after creating your first agent
+```
+
+</details>
 
 ---
 

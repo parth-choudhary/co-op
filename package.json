@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "setup:start": "bash scripts/setup.sh --start",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
