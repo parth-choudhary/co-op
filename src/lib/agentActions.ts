@@ -4,6 +4,7 @@ import { notifyCardAssigned, notifyCardMemberAdded, notifyMentionsInCardText } f
 import { assignNextCardNumber, resolveProjectIdForColumn, resolveCardId } from './cardKeyAssign';
 import { formatCardKey } from './cardKeys';
 import { pathForCardKey } from './appRoutes';
+import { embedText, toVectorLiteral } from './embeddings';
 
 /**
  * Decorate a card-shaped object with `key` and `_url` for tool consumers.
@@ -44,6 +45,7 @@ export type AgentAction =
   | { type: 'list_cards'; columnId: string }
   | { type: 'get_card'; cardId: string }
   | { type: 'propose_about_update'; newText: string; reason: string }
+  | { type: 'set_project_memory'; key: string; content: string; kind?: string }
   | { type: 'start_coding_task'; cardId: string; notes?: string; force?: boolean };
 
 export interface ActionResult {
@@ -88,6 +90,8 @@ export async function executeAction(agentId: string, action: AgentAction): Promi
       return listSubtasks(action);
     case 'propose_about_update':
       return proposeAboutUpdate(agentId, action);
+    case 'set_project_memory':
+      return setProjectMemory(agentId, action);
     case 'start_coding_task':
       return startCodingTask(agentId, action);
     default:
@@ -595,6 +599,63 @@ async function proposeAboutUpdate(agentId: string, action: Extract<AgentAction, 
   });
   await logAgentActivity(agentId, 'proposed_about_update', { proposalId: proposal.id, reason: action.reason?.slice(0, 200) });
   return { ok: true, data: { proposalId: proposal.id, status: 'pending', note: 'Queued for human approval. The About section will NOT change until a project member approves this proposal.' } };
+}
+
+const PROJECT_MEMORY_KINDS = new Set(['decision', 'glossary', 'convention', 'fact']);
+
+async function setProjectMemory(agentId: string, action: Extract<AgentAction, { type: 'set_project_memory' }>): Promise<ActionResult> {
+  const agent = await prisma.aIAgent.findUnique({ where: { id: agentId }, select: { projectId: true } });
+  if (!agent?.projectId) return { ok: false, error: 'Agent has no project — set_project_memory requires a project-scoped agent' };
+
+  const key = (action.key || '').trim();
+  const content = (action.content || '').trim();
+  if (!key) return { ok: false, error: 'key is required' };
+  if (!content) return { ok: false, error: 'content cannot be empty' };
+  const kind = action.kind && PROJECT_MEMORY_KINDS.has(action.kind) ? action.kind : 'fact';
+
+  // Note: projectId here comes from the agent's own record, NOT from the
+  // action payload. There's no way for an agent to write into another
+  // project's memory through this tool — the projectId is server-resolved.
+  const memory = await prisma.projectMemory.upsert({
+    where: { projectId_key: { projectId: agent.projectId, key } },
+    create: {
+      projectId: agent.projectId,
+      key,
+      content,
+      kind,
+      source: 'agent',
+      writtenBy: agentId,
+    },
+    update: {
+      content,
+      kind,
+      source: 'agent',
+      writtenBy: agentId,
+    },
+  });
+
+  // Best-effort embedding write — same pattern as agent memory + project
+  // memory POST. Falls through silently when OPENAI_API_KEY is unset.
+  const vec = await embedText(content);
+  if (vec) {
+    await prisma.$executeRaw`UPDATE "ProjectMemory" SET "embedding" = ${toVectorLiteral(vec)}::vector WHERE "id" = ${memory.id}`;
+  }
+
+  await logAgentActivity(agentId, 'project_memory_written', {
+    projectId: agent.projectId,
+    key: memory.key,
+    kind: memory.kind,
+    embedded: !!vec,
+  });
+
+  return {
+    ok: true,
+    data: {
+      key: memory.key,
+      kind: memory.kind,
+      note: 'Saved to project memory. Visible to every agent in this project on their next run.',
+    },
+  };
 }
 
 async function startCodingTask(agentId: string, action: Extract<AgentAction, { type: 'start_coding_task' }>): Promise<ActionResult> {

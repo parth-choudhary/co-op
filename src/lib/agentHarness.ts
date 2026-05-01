@@ -13,6 +13,8 @@ export type AgentEventType =
   | 'card_commented'
   | 'memory_written'
   | 'memory_retrieved'
+  | 'project_memory_written'
+  | 'project_memory_retrieved'
   | 'context_rewritten'
   | 'proposed_about_update'
   | 'skill_invoked'

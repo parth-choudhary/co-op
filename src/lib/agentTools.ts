@@ -233,6 +233,23 @@ const kanbanTools: ToolDef[] = [
       required: ['newText', 'reason'],
     },
   },
+  {
+    name: 'set_project_memory',
+    description: "Save a fact, decision, glossary entry, or convention to PROJECT memory — visible to every agent in this project on their next run. Use when you learn something the team should benefit from, NOT for your own private notes (those go in the agent memory tier you read at the top of every prompt). Re-using a key updates the existing entry. Examples: key='billing-deferred-to-v2' content='We decided to ship without billing in v1; revisit in Q3.' kind='decision'. key='auth-location' content='All auth code lives under src/lib/auth/.' kind='convention'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        key: { type: 'string', description: 'Short snake_case identifier. Re-using a key updates the existing entry — choose stable names.' },
+        content: { type: 'string', description: 'The information to remember (markdown ok). Be concrete; future agents will read this verbatim.' },
+        kind: {
+          type: 'string',
+          enum: ['decision', 'glossary', 'convention', 'fact'],
+          description: "decision = something the team chose; glossary = a term definition; convention = a rule we follow; fact = an observation about the project. Defaults to 'fact'.",
+        },
+      },
+      required: ['key', 'content'],
+    },
+  },
 ];
 
 export function getAnthropicTools(): Anthropic.Tool[] {
