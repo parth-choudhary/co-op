@@ -95,6 +95,7 @@ model Project {
   installedSkills    InstalledSkill[]
   agentSubscriptions AgentSubscription[]
   scheduledJobs      ScheduledJob[]
+  projectMemories    ProjectMemory[]
 
   @@index([companyId])
 }
@@ -359,6 +360,30 @@ model AgentSubscription {
   @@index([agentId])
   @@index([projectId])
   @@index([source, sourceRef])
+}
+
+/// Project-scoped memory tier (Memory v2 / Phase 2). Sibling of AgentMemory but
+/// scoped by projectId — every agent in the project reads from this tier on
+/// every run, plus its own AgentMemory. Agents write here via the
+/// `set_project_memory` tool; humans write via the project settings UI.
+/// `writtenBy` is the agent id when an agent wrote the row; null for human edits.
+model ProjectMemory {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key       String
+  content   String   @db.Text
+  kind      String   @default("fact")     // 'decision' | 'glossary' | 'convention' | 'fact'
+  source    String   @default("manual")   // 'agent' | 'admin' | 'manual'
+  sourceRef String?
+  writtenBy String?
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, key])
+  @@index([projectId])
+  @@index([projectId, kind])
 }
 
 model AgentMemory {
