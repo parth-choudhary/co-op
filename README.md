@@ -60,7 +60,7 @@ Co-Op is a self-hostable team workspace built around the idea that AI agents sho
 ### 1. Install
 
 ```bash
-git clone <this-repo> co-op
+git clone https://github.com/parth-choudhary/co-op.git
 cd co-op
 npm install
 ```
