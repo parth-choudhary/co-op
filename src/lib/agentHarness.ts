@@ -1,6 +1,7 @@
 import prisma from './db';
 import { formatCardKey } from './cardKeys';
 import { pathForCardKey } from './appRoutes';
+import { embedText, isEmbeddingEnabled, toVectorLiteral } from './embeddings';
 
 export type AgentEventType =
   | 'chat_message'
@@ -11,6 +12,7 @@ export type AgentEventType =
   | 'card_updated'
   | 'card_commented'
   | 'memory_written'
+  | 'memory_retrieved'
   | 'context_rewritten'
   | 'proposed_about_update'
   | 'skill_invoked'
@@ -156,12 +158,127 @@ export interface HarnessContext {
   kind?: 'card' | 'chat' | 'dm' | 'webhook' | 'cron' | 'manual';
   /** The card the run is scoped to (only for kind='card'). */
   cardId?: string | null;
+  /**
+   * Free-text describing what the agent is being asked to do this run — the
+   * incoming chat message, the card title+description, the cron prompt, etc.
+   * Used by the memory-retrieval layer to embed against AgentMemory.embedding
+   * and surface only the memories relevant to this turn instead of dumping
+   * the whole list. When omitted (or when OPENAI_API_KEY is unset), the
+   * harness falls back to the legacy load-everything behavior.
+   */
+  triggerText?: string;
+}
+
+interface RetrievedMemory {
+  key: string;
+  content: string;
+  kind: string;
+  /** Cosine similarity score in [-1, 1]. Undefined for rows pulled by the
+   *  always-include rules (preferences, recent decisions outside top-K). */
+  score?: number;
+}
+
+/**
+ * Retrieve the memories the agent should see for this run.
+ *
+ * When `triggerText` is provided AND OPENAI_API_KEY is set, runs a top-12
+ * cosine-ranked query, then UNIONs in:
+ *   - all `kind='preference'` rows (user-set policy — always in the prompt)
+ *   - all `kind='decision'` rows updated in the last 7 days (recency boost)
+ * and dedups by id (the scored copy wins over the always-include copy when
+ * a row qualifies for both). The retrieved keys + scores are written to
+ * AgentActivityLog as a `memory_retrieved` event so the harness UI (Phase 4)
+ * can show "what did this run actually load?".
+ *
+ * When triggerText is missing/empty OR embedding fails OR the API key is
+ * unset, falls back to the legacy `findMany` path — byte-identical to the
+ * pre–Memory-v1 behavior, so keyless / CLI-only deployments are unaffected.
+ */
+async function retrieveMemories(agentId: string, triggerText: string | undefined): Promise<RetrievedMemory[]> {
+  const fallback = async (): Promise<RetrievedMemory[]> => {
+    const all = await prisma.agentMemory.findMany({
+      where: { agentId },
+      orderBy: [{ kind: 'asc' }, { updatedAt: 'desc' }],
+    });
+    return all.map((m: { key: string; content: string; kind: string }) => ({
+      key: m.key,
+      content: m.content,
+      kind: m.kind,
+    }));
+  };
+
+  if (!triggerText || !triggerText.trim() || !isEmbeddingEnabled()) {
+    return fallback();
+  }
+
+  const queryVec = await embedText(triggerText);
+  if (!queryVec) return fallback();
+
+  const literal = toVectorLiteral(queryVec);
+
+  // Three sources, deduped by id, scored row wins via DISTINCT ON + ORDER BY.
+  // The float8 cast on score keeps the type stable across the UNION ALL — without
+  // it Postgres widens NULL to text in some planner paths.
+  type RawRow = { id: string; key: string; content: string; kind: string; score: number | null };
+  const rows = await prisma.$queryRaw<RawRow[]>`
+    WITH ranked AS (
+      SELECT "id", "key", "content", "kind",
+             (1 - ("embedding" <=> ${literal}::vector))::float8 AS score
+      FROM "AgentMemory"
+      WHERE "agentId" = ${agentId}
+        AND "embedding" IS NOT NULL
+      ORDER BY "embedding" <=> ${literal}::vector
+      LIMIT 12
+    ),
+    prefs AS (
+      SELECT "id", "key", "content", "kind", NULL::float8 AS score
+      FROM "AgentMemory"
+      WHERE "agentId" = ${agentId} AND "kind" = 'preference'
+    ),
+    recent_decisions AS (
+      SELECT "id", "key", "content", "kind", NULL::float8 AS score
+      FROM "AgentMemory"
+      WHERE "agentId" = ${agentId}
+        AND "kind" = 'decision'
+        AND "updatedAt" >= NOW() - INTERVAL '7 days'
+    )
+    SELECT DISTINCT ON ("id") "id", "key", "content", "kind", "score"
+    FROM (
+      SELECT * FROM ranked
+      UNION ALL SELECT * FROM prefs
+      UNION ALL SELECT * FROM recent_decisions
+    ) merged
+    ORDER BY "id", "score" DESC NULLS LAST
+  `;
+
+  // Audit log: what did we actually pull for this turn? Bypasses logAgentActivity()
+  // on purpose so the AgentContextSnapshot.stale flag isn't churned by every read
+  // — that flag is meant to track state-changing events, not retrievals.
+  if (rows.length > 0) {
+    await prisma.agentActivityLog.create({
+      data: {
+        agentId,
+        eventType: 'memory_retrieved',
+        payload: {
+          retrieved: rows.map((r: RawRow) => ({ key: r.key, score: r.score })),
+          query: triggerText.slice(0, 200),
+        },
+      },
+    });
+  }
+
+  return rows.map((r: RawRow) => ({
+    key: r.key,
+    content: r.content,
+    kind: r.kind,
+    score: r.score ?? undefined,
+  }));
 }
 
 export async function compileHarness(agentId: string, ctx: HarnessContext = {}): Promise<string> {
   const [agent, memories, snapshot, recentActivity, kanban] = await Promise.all([
     prisma.aIAgent.findUnique({ where: { id: agentId } }),
-    prisma.agentMemory.findMany({ where: { agentId }, orderBy: [{ kind: 'asc' }, { updatedAt: 'desc' }] }),
+    retrieveMemories(agentId, ctx.triggerText),
     prisma.agentContextSnapshot.findUnique({ where: { agentId } }),
     prisma.agentActivityLog.findMany({ where: { agentId }, orderBy: { createdAt: 'desc' }, take: 20 }),
     getAgentKanbanContext(agentId),
