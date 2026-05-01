@@ -194,7 +194,7 @@ interface RetrievedMemory {
  * unset, falls back to the legacy `findMany` path — byte-identical to the
  * pre–Memory-v1 behavior, so keyless / CLI-only deployments are unaffected.
  */
-async function retrieveMemories(agentId: string, triggerText: string | undefined): Promise<RetrievedMemory[]> {
+export async function retrieveMemories(agentId: string, triggerText: string | undefined): Promise<RetrievedMemory[]> {
   const fallback = async (): Promise<RetrievedMemory[]> => {
     const all = await prisma.agentMemory.findMany({
       where: { agentId },
