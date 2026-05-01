@@ -42,7 +42,7 @@ The design borrows the strongest idea from `claude-os` (relevance-ranked retriev
 
 ### Phase 2 — Memory v2: Project-tier shared memory
 
-**Status:** PLANNED — see `.planning/phases/02-memory-v2-project-tier/02-01-PLAN.md`. Run `/gsd-execute-phase 2` to ship.
+**Status:** CODE_COMPLETE — 8 commits, 81 tests pass, awaiting live verification (UI smoke + vector path with OpenAI key). See `.planning/phases/02-memory-v2-project-tier/02-01-SUMMARY.md`.
 **Depends on:** Phase 1
 
 **Why:** Per-agent memory creates silos. A PM agent learns "billing deferred to v2"; the CTO agent doesn't see it. A Developer agent learns "auth code lives in `src/lib/auth/`"; sister Developer agents repeat the discovery. Project-scoped memory lets agents share learnings without admin-edited markdown.

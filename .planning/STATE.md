@@ -1,12 +1,13 @@
 # Project State
 
-**Last activity:** 2026-05-01 — Phase 2 planned. PLAN.md ready at `.planning/phases/02-memory-v2-project-tier/02-01-PLAN.md`. 8 tasks across model + API + tool + harness + UI + 2 tests + docs.
+**Last activity:** 2026-05-01 — Phase 2 shipped. Project-tier shared memory live across API + agent tool + harness + settings UI. 8 commits, 81 tests pass (was 73), awaiting live UI smoke + vector-path verification with OpenAI key.
 
 ## Current Position
 
 - **Branch:** `main`
 - **Active milestone:** Memory v1–v4
-- **Active phase:** Phase 2 — Memory v2 (PLANNED, awaiting execution). Run `/gsd-execute-phase 2` to ship.
+- **Phase status:** Phase 1 + 2 CODE_COMPLETE (live verification pending). Phases 3 + 4 PENDING.
+- **Next phase:** Phase 4 — retrieval audit UI — directly maps to M1's "agent visibility / audit". Phase 3 (lifecycle) is value-additive but doesn't sit on the M1 active list. Run `/gsd-plan-phase 4` when ready.
 - **Mode:** quick (direct implementation; planning written by hand because gsd-sdk isn't installed and the heavyweight plan-phase chain isn't load-bearing for well-scoped milestones)
 
 ## What's in flight
@@ -22,6 +23,12 @@ Nothing in flight. Phase 1 is code-complete; Phase 2 hasn't been planned yet.
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 20260501-memory-v1-embedding-rank | Memory v1: embedding-ranked retrieval (pgvector + OpenAI embeddings + keyless fallback + audit log) | 2026-05-01 | `8be8526` | Code-complete (live verification pending) | [20260501-memory-v1-embedding-rank](./quick/20260501-memory-v1-embedding-rank/) |
+
+## Phases Completed
+
+| Phase | Title | Date | Final commit | Status | Directory |
+|-------|-------|------|--------------|--------|-----------|
+| 2 | Memory v2: project-tier shared memory | 2026-05-01 | `1b2d3bc` | Code-complete (live UI + vector verification pending) | [02-memory-v2-project-tier](./phases/02-memory-v2-project-tier/) |
 
 ## Notes
 
