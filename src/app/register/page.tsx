@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Mail, Lock, User, Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Building2, ArrowRight, Loader2 } from 'lucide-react';
+import CoOpLogo from '@/components/CoOpLogo';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function RegisterPage() {
     <div className="auth-page">
       <div className="auth-container fade-in">
         <div className="auth-header">
-          <div className="auth-logo"><Zap size={28} /></div>
+          <div className="auth-logo"><CoOpLogo size={28} /></div>
           <h1 className="auth-title">Create your workspace</h1>
           <p className="auth-subtitle">Start building your company with AI</p>
         </div>

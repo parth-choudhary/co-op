@@ -1,0 +1,113 @@
+# Co-op coding agent workflow. Commit this as
+# `.github/workflows/coop-agent.yml` in the repo that co-op should open PRs
+# against. Then install the co-op GitHub App on the repo and paste the
+# installation ID into project settings → Code Automation.
+#
+# Required repo secrets:
+#   ANTHROPIC_API_KEY   — for the Claude model the agent drives
+#
+# Triggered via workflow_dispatch from the co-op orchestrator. Do NOT add a
+# `push`/`pull_request` trigger here.
+
+name: co-op agent
+on:
+  workflow_dispatch:
+    inputs:
+      runId:
+        description: Co-op run id
+        required: true
+      cardId:
+        description: Card id
+        required: true
+      briefUrl:
+        description: Signed URL to the task brief
+        required: true
+      baseBranch:
+        description: Branch to branch off from
+        required: true
+        default: main
+      branchName:
+        description: Branch the agent should push to
+        required: true
+      maxWallSeconds:
+        description: Hard timeout for the coding step
+        required: false
+        default: "1800"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.baseBranch }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "co-op agent"
+          git config user.email "agent@co-op.local"
+          git checkout -b "${{ inputs.branchName }}"
+
+      - name: Fetch task brief
+        run: |
+          curl -sSfL "${{ inputs.briefUrl }}" -o /tmp/coop-brief.md
+          echo "::notice::Fetched $(wc -c < /tmp/coop-brief.md) bytes of brief"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Claude Code on the brief
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -e
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set on this repository."
+            exit 1
+          fi
+          timeout "${{ inputs.maxWallSeconds }}" npx --yes @anthropic-ai/claude-code \
+            --dangerously-skip-permissions \
+            --print \
+            < /tmp/coop-brief.md \
+            > /tmp/coop-agent.log 2>&1 || true
+          tail -c 8000 /tmp/coop-agent.log || true
+
+      - name: Commit anything the agent changed
+        id: commit
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Agent produced no file changes."
+          else
+            git commit -m "co-op: ${{ inputs.runId }}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push branch
+        if: steps.commit.outputs.changed == 'true'
+        run: git push --set-upstream origin "${{ inputs.branchName }}"
+
+      - name: Open pull request
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="[co-op] run ${{ inputs.runId }}"
+          BODY=$(printf "Automated run from co-op.\n\nrunId: %s\ncardId: %s\n\nSee the brief consumed by the agent attached below.\n\n---\n\n%s\n" \
+            "${{ inputs.runId }}" "${{ inputs.cardId }}" "$(cat /tmp/coop-brief.md)")
+          gh pr create \
+            --base "${{ inputs.baseBranch }}" \
+            --head "${{ inputs.branchName }}" \
+            --title "$TITLE" \
+            --body "$BODY"

@@ -9,80 +9,407 @@ datasource db {
 }
 
 model Company {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   users     User[]
-  aiAgents  AIAgent[]
   projects  Project[]
-  modelKeys ModelKey[]
 }
 
 model User {
-  id           String   @id @default(cuid())
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  email        String   @unique
-  name         String
-  passwordHash String
-  avatarUrl    String?
-  role         String   @default("member")
-  matrixUserId String?
-  createdAt    DateTime @default(now())
-  assignedCards Card[]    @relation("CardAssignee")
-  comments      Comment[]
+  id                     String              @id @default(cuid())
+  companyId              String
+  company                Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email                  String              @unique
+  name                   String
+  passwordHash           String
+  avatarUrl              String?
+  role                   String              @default("member")
+  matrixUserId           String?
+  createdAt              DateTime            @default(now())
+  assignedCards          Card[]              @relation("CardAssignee")
+  comments               Comment[]
+  cardMemberships        CardMember[]        @relation("CardMemberships")
+  projectMemberships     ProjectMember[]
+  chatChannelMemberships ChatChannelMember[]
+  notifications          Notification[]
+
   @@index([companyId])
 }
 
-model AIAgent {
-  id            String   @id @default(cuid())
-  companyId     String
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name          String
-  role          String
-  roleLabel     String
-  description   String?
-  avatarUrl     String?
-  isActive      Boolean  @default(true)
-  modelProvider String
-  modelName     String
-  systemPrompt  String   @db.Text
-  temperature   Float    @default(0.7)
-  tools         Json     @default("[]")
-  matrixUserId  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  assignedCards Card[]   @relation("CardAIAssignee")
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  summary   String   @db.Text
+  projectId String?
+  boardId   String?
+  cardId    String?
+  commentId String?
+  link      String
+  actorName String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Project {
+  id                 String                 @id @default(cuid())
+  companyId          String
+  company            Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  about              String?                @db.Text
+  aboutUpdatedAt     DateTime?
+  userMd             String?                @db.Text
+  userMdUpdatedAt    DateTime?
+  agentsMd           String?                @db.Text
+  agentsMdUpdatedAt  DateTime?
+  color              String                 @default("#6366f1")
+  icon               String                 @default("folder")
+  matrixRoomId       String?
+  defaultAgentShell  Boolean                @default(false)
+  // Linear/Jira-style key prefix for cards in this project (e.g. "COOP" → "COOP-1", "COOP-2").
+  // Auto-derived from project name on create; editable in settings later.
+  cardKeyPrefix      String?
+  // Atomic counter for the next card number assigned in this project.
+  nextCardNumber     Int                    @default(1)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  boards             Board[]
+  cards              Card[]
+  members            ProjectMember[]
+  agents             AIAgent[]
+  modelKeys          ModelKey[]
+  channels           ChatChannel[]
+  aboutProposals     ProjectAboutProposal[]
+  codeConfig         ProjectCodeConfig?
+  sandboxConfig      ProjectSandboxConfig?
+  agentTaskRuns      AgentTaskRun[]
+  secrets            ProjectSecret[]
+  installedSkills    InstalledSkill[]
+  agentSubscriptions AgentSubscription[]
+  scheduledJobs      ScheduledJob[]
+
   @@index([companyId])
+}
+
+model ScheduledJob {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentId     String
+  agent       AIAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  kind        String    @default("reminder") // reminder | recurring | one_shot
+  cronExpr    String?
+  runAt       DateTime?
+  nextRunAt   DateTime
+  prompt      String    @db.Text
+  title       String?
+  sessionKey  String?
+  cardId      String?
+  payload     Json?
+  timezone    String?   @default("UTC")
+  createdById String?
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime?
+  lastRunId   String?
+  runCount    Int       @default(0)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([agentId])
+  @@index([enabled, nextRunAt])
+  @@index([cardId])
+}
+
+model ProjectCodeConfig {
+  projectId            String   @id
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  executionMode        String // "github_actions" | "ssh_devbox" | "local_git"
+  mergePolicy          String   @default("human_pr") // "human_pr" | "staging_branch" | "auto_merge"
+  repoFullName         String?
+  defaultBranch        String   @default("main")
+  stagingBranch        String?
+  ghInstallationId     String?
+  triggerColumnIds     String[] @default([])
+  triggerOnAssign      Boolean  @default(false)
+  triggerOnComment     Boolean  @default(true)
+  triggerOnColumnMove  Boolean  @default(true)
+  triggerOnManual      Boolean  @default(true)
+  sshHost              String?
+  sshUser              String?
+  sshKeyEncrypted      String?  @db.Text
+  localRepoPath        String? // absolute path; only used when executionMode='local_git'
+  pushToRemote         Boolean  @default(false)
+  openPrWithGhCli      Boolean  @default(false)
+  maxTokensPerRun      Int      @default(200000)
+  maxWallSecondsPerRun Int      @default(1800)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AgentTaskRun {
+  id             String     @id @default(cuid())
+  projectId      String
+  project        Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cardId         String?
+  agentId        String
+  triggerKind    String // "column_move" | "assignment" | "comment" | "manual"
+  executionMode  String
+  status         String     @default("queued")
+  branchName     String?
+  prNumber       Int?
+  prUrl          String?
+  commitSha      String?
+  logsUrl        String?
+  errorMessage   String?    @db.Text
+  taskBrief      String?    @db.Text
+  trigger        String     @default("card")
+  parentRunId    String?
+  subscriptionId String?
+  sessionKey     String?
+  idempotencyKey String?
+  skillRuns      SkillRun[]
+  startedAt      DateTime   @default(now())
+  finishedAt     DateTime?
+
+  @@index([cardId])
+  @@index([agentId])
+  @@index([projectId, status])
+  @@index([parentRunId])
+  @@index([subscriptionId])
+  @@index([sessionKey])
+}
+
+model WebhookIdempotency {
+  id           String   @id @default(cuid())
+  scope        String
+  key          String
+  runIds       String[] @default([])
+  responseJson Json?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+}
+
+model ProjectAboutProposal {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentId      String?
+  agent        AIAgent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  proposedText String    @db.Text
+  reason       String?   @db.Text
+  status       String    @default("pending") // pending | approved | rejected
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([projectId, status])
+  @@index([agentId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model AIAgent {
+  id                     String                 @id @default(cuid())
+  companyId              String?
+  projectId              String?
+  project                Project?               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name                   String
+  role                   String
+  roleLabel              String
+  description            String?
+  avatarUrl              String?
+  isActive               Boolean                @default(true)
+  modelProvider          String
+  modelName              String
+  systemPrompt           String                 @db.Text
+  soulMd                 String?                @db.Text
+  soulMdUpdatedAt        DateTime?
+  temperature            Float                  @default(0.7)
+  tools                  Json                   @default("[]")
+  skills                 String[]               @default([])
+  plugins                String[]               @default([])
+  perpetual              Boolean                @default(false)
+  scheduleCron           String?
+  matrixUserId           String?
+  matrixAccessToken      String?                @db.Text
+  matrixDeviceId         String?
+  matrixLocalpart        String?                @unique
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  assignedCards          Card[]                 @relation("CardAIAssignee")
+  cardMemberships        CardMember[]           @relation("CardAgentMemberships")
+  memories               AgentMemory[]
+  activity               AgentActivityLog[]
+  contextSnapshot        AgentContextSnapshot?
+  chatChannelMemberships ChatChannelMember[]
+  aboutProposals         ProjectAboutProposal[]
+  subscriptions          AgentSubscription[]
+  scheduledJobs          ScheduledJob[]
+
+  @@index([projectId])
+}
+
+model ProjectSandboxConfig {
+  projectId       String   @id
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  backend         String   @default("local") // local | ssh | openshell
+  image           String   @default("coop/sandbox-tier1:latest")
+  sshHost         String?
+  sshUser         String?
+  sshKeyEncrypted String?  @db.Text
+  workspaceDir    String   @default("/workspace")
+  policyYaml      String?  @db.Text
+  idleTimeoutSec  Int      @default(900)
+  maxWallSeconds  Int      @default(300)
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProjectSecret {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key            String
+  valueEncrypted String   @db.Text
+  mountAs        String   @default("env") // env | file
+  mountPath      String?
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([projectId, key])
+  @@index([projectId])
+}
+
+model InstalledSkill {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  slug         String
+  version      String   @default("0.0.0")
+  source       String   @default("bundled") // bundled | url | zip
+  sourceRef    String?
+  manifestJson Json
+  bodyMd       String   @db.Text
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+}
+
+model SkillRun {
+  id             String       @id @default(cuid())
+  agentTaskRunId String
+  agentTaskRun   AgentTaskRun @relation(fields: [agentTaskRunId], references: [id], onDelete: Cascade)
+  slug           String
+  args           Json?
+  status         String       @default("running")
+  resultSummary  String?      @db.Text
+  errorMessage   String?      @db.Text
+  startedAt      DateTime     @default(now())
+  endedAt        DateTime?
+
+  @@index([agentTaskRunId])
+  @@index([slug])
+}
+
+model AgentSubscription {
+  id                 String    @id @default(cuid())
+  agentId            String
+  agent              AIAgent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  projectId          String
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  source             String // discord_channel | reddit_subreddit | x_mentions | webhook
+  sourceRef          String
+  filter             Json?
+  sessionKeyTemplate String?
+  enabled            Boolean   @default(true)
+  lastEventAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([agentId])
+  @@index([projectId])
+  @@index([source, sourceRef])
+}
+
+model AgentMemory {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  key       String
+  content   String   @db.Text
+  kind      String   @default("fact")
+  source    String   @default("manual")
+  sourceRef String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, key])
+  @@index([agentId])
+  @@index([agentId, kind])
+}
+
+model AgentActivityLog {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([agentId, createdAt])
+}
+
+model AgentContextSnapshot {
+  agentId   String   @id
+  agent     AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  stale     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }
 
 model ModelKey {
   id           String    @id @default(cuid())
-  companyId    String
-  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String?
+  projectId    String?
+  project      Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   provider     String
   keyEncrypted String
   label        String?
   isValid      Boolean   @default(true)
   lastUsedAt   DateTime?
   createdAt    DateTime  @default(now())
-  @@index([companyId])
-}
 
-model Project {
-  id           String   @id @default(cuid())
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  color        String   @default("#6366f1")
-  icon         String   @default("folder")
-  matrixRoomId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  boards Board[]
-  @@index([companyId])
+  @@index([projectId])
 }
 
 model Board {
@@ -91,7 +418,8 @@ model Board {
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name      String   @default("Main Board")
   createdAt DateTime @default(now())
-  columns Column[]
+  columns   Column[]
+
   @@index([projectId])
 }
 
@@ -102,41 +430,193 @@ model Column {
   name     String
   position Int
   color    String?
-  cards Card[]
+  cards    Card[]
+
   @@index([boardId])
 }
 
 model Card {
-  id          String    @id @default(cuid())
-  columnId    String
-  column      Column    @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  title       String
-  description String?   @db.Text
-  position    Int
-  priority    String    @default("medium")
-  labels      Json      @default("[]")
-  dueDate     DateTime?
+  id              String             @id @default(cuid())
+  columnId        String
+  column          Column             @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  // Per-project monotonically increasing number; combined with Project.cardKeyPrefix
+  // forms the human-facing key like "COOP-123". Denormalized projectId is required
+  // because the unique constraint can't traverse Column→Board→Project.
+  number          Int?
+  projectId       String?
+  project         Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?            @db.Text
+  position        Int
+  priority        String             @default("medium")
+  labels          Json               @default("[]")
+  dueDate         DateTime?
+  coverImage      String?
   assigneeType    String?
   assigneeUserId  String?
-  assigneeUser    User?    @relation("CardAssignee", fields: [assigneeUserId], references: [id])
+  assigneeUser    User?              @relation("CardAssignee", fields: [assigneeUserId], references: [id])
   assigneeAgentId String?
-  assigneeAgent   AIAgent? @relation("CardAIAssignee", fields: [assigneeAgentId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  comments Comment[]
+  assigneeAgent   AIAgent?           @relation("CardAIAssignee", fields: [assigneeAgentId], references: [id])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  activeRunId     String?
+  lastPrUrl       String?
+  lastPrStatus    String?
+  parentCardId    String?
+  parent          Card?              @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
+  subtasks        Card[]             @relation("CardSubtasks")
+  comments        Comment[]
+  checklists      Checklist[]
+  attachments     Attachment[]
+  activities      CardActivity[]
+  members         CardMember[]
+  threadSummary   CardThreadSummary?
+
+  @@unique([projectId, number])
   @@index([columnId])
+  @@index([projectId])
   @@index([assigneeUserId])
   @@index([assigneeAgentId])
+  @@index([parentCardId])
 }
 
 model Comment {
-  id         String   @id @default(cuid())
-  cardId     String
-  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  content    String   @db.Text
-  authorType String
-  authorId   String
-  author     User?    @relation(fields: [authorId], references: [id])
-  createdAt  DateTime @default(now())
+  id              String    @id @default(cuid())
+  cardId          String
+  card            Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  content         String    @db.Text
+  authorType      String
+  authorId        String
+  author          User?     @relation(fields: [authorId], references: [id])
+  parentCommentId String?
+  parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
+  createdAt       DateTime  @default(now())
+
   @@index([cardId])
+  @@index([parentCommentId])
+}
+
+model Checklist {
+  id       String          @id @default(cuid())
+  cardId   String
+  card     Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  title    String          @default("Checklist")
+  position Int
+  items    ChecklistItem[]
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(cuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  content     String
+  isChecked   Boolean   @default(false)
+  position    Int
+
+  @@index([checklistId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  cardId       String
+  card         Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  name         String
+  url          String
+  mimeType     String?
+  size         Int?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([cardId])
+}
+
+model CardActivity {
+  id        String   @id @default(cuid())
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  type      String
+  content   String   @db.Text
+  actorId   String
+  actorType String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([cardId])
+}
+
+model CardMember {
+  id        String   @id @default(cuid())
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation("CardMemberships", fields: [userId], references: [id])
+  agentId   String?
+  agent     AIAgent? @relation("CardAgentMemberships", fields: [agentId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([cardId, userId])
+  @@unique([cardId, agentId])
+  @@index([cardId])
+}
+
+model ChatChannel {
+  id           String              @id @default(cuid())
+  projectId    String
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String
+  kind         String              @default("channel")
+  matrixRoomId String?
+  createdById  String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  members      ChatChannelMember[]
+  summary      RoomSummary?
+
+  @@index([projectId])
+  @@index([kind])
+}
+
+model ChatChannelMember {
+  id        String      @id @default(cuid())
+  channelId String
+  channel   ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId   String?
+  agent     AIAgent?    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([channelId, userId])
+  @@unique([channelId, agentId])
+  @@index([channelId])
+  @@index([userId])
+  @@index([agentId])
+}
+
+// Rolling per-room chat history summary. One row per ChatChannel; shared across all agents.
+// Holds the compressed view of everything older than the recent message window.
+model RoomSummary {
+  channelId     String      @id
+  channel       ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  summary       String      @db.Text
+  upToEventId   String?
+  upToTimestamp DateTime?
+  messageCount  Int         @default(0)
+  modelUsed     String?
+  updatedAt     DateTime    @updatedAt
+}
+
+// Rolling per-card comment-thread summary. One row per Card; shared across agents.
+model CardThreadSummary {
+  cardId        String    @id
+  card          Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  summary       String    @db.Text
+  upToCommentId String?
+  upToTimestamp DateTime?
+  messageCount  Int       @default(0)
+  modelUsed     String?
+  updatedAt     DateTime  @updatedAt
 }

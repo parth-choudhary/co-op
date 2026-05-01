@@ -1,0 +1,26 @@
+{
+  "description": "Files we care about in openclaw/openclaw. A drift in any of these should trigger a compat review.",
+  "paths": [
+    "packages/plugin-sdk/src/plugin-entry.ts",
+    "packages/plugin-sdk/src/types.ts",
+    "packages/memory-host-sdk/src/index.ts",
+    "src/infra/system-events.ts",
+    "src/gateway/server-session-key.ts",
+    "src/gateway/server-chat.ts",
+    "src/gateway/server-cron.ts",
+    "src/gateway/server-http.ts",
+    "src/cron/service.ts",
+    "src/config/sessions/types.ts",
+    "src/config/sessions/store.ts"
+  ],
+  "docs": [
+    "docs/skill-format.md",
+    "docs/http-api.md",
+    "docs/gateway/secrets.md",
+    "docs.acp.md"
+  ],
+  "clawhubDocs": {
+    "repo": "https://github.com/openclaw/clawhub",
+    "paths": ["docs/skill-format.md", "docs/http-api.md", "docs/README.md"]
+  }
+}

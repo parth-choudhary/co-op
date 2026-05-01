@@ -1,0 +1,7 @@
+{
+  "repo": "https://github.com/openclaw/openclaw",
+  "branch": "main",
+  "pinnedCommit": null,
+  "lastSyncedAt": null,
+  "note": "Run scripts/openclaw-sync.sh to refresh. Commit the updated file together with any shim changes."
+}

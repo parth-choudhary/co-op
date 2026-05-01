@@ -55,6 +55,24 @@
   --color-role-designer: #f97316;
   --color-role-custom: #818cf8;
 
+  /* Label Colors (Trello-like palette) */
+  --label-green: #4bce97;
+  --label-green-bg: rgba(75, 206, 151, 0.2);
+  --label-yellow: #f5cd47;
+  --label-yellow-bg: rgba(245, 205, 71, 0.2);
+  --label-orange: #fea362;
+  --label-orange-bg: rgba(254, 163, 98, 0.2);
+  --label-red: #f87168;
+  --label-red-bg: rgba(248, 113, 104, 0.2);
+  --label-purple: #9f8fef;
+  --label-purple-bg: rgba(159, 143, 239, 0.2);
+  --label-blue: #579dff;
+  --label-blue-bg: rgba(87, 157, 255, 0.2);
+  --label-pink: #e774bb;
+  --label-pink-bg: rgba(231, 116, 187, 0.2);
+  --label-sky: #6cc3e0;
+  --label-sky-bg: rgba(108, 195, 224, 0.2);
+
   /* ---- Typography ---- */
   --font-family-heading: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', Helvetica, Arial, sans-serif;
   --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -119,6 +137,8 @@
   --sidebar-collapsed-width: 68px;
   --topbar-height: 56px;
   --kanban-column-width: 320px;
+  --chat-room-list-width: 280px;
+  --card-detail-width: 860px;
 
   /* ---- Z-Index ---- */
   --z-dropdown: 100;
@@ -126,4 +146,47 @@
   --z-modal: 300;
   --z-toast: 400;
   --z-tooltip: 500;
+}
+
+/* ============================================
+   Light Theme Overrides
+   Activated via <html data-theme="light">
+   ============================================ */
+html[data-theme="light"] {
+  --color-bg-primary: #f6f7f9;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #eef0f3;
+  --color-bg-elevated: #ffffff;
+  --color-bg-hover: #e5e8ec;
+  --color-bg-active: #d8dce1;
+
+  --color-surface: #ffffff;
+  --color-surface-hover: #f6f7f9;
+  --color-surface-border: #dde1e6;
+  --color-surface-border-hover: #bfc5cd;
+
+  --color-text-primary: #1a1d21;
+  --color-text-secondary: #4a5058;
+  --color-text-tertiary: #6b7280;
+  --color-text-inverse: #ffffff;
+
+  --color-accent: #00a870;
+  --color-accent-hover: #008f5e;
+  --color-accent-muted: rgba(0, 168, 112, 0.12);
+  --color-accent-gradient: linear-gradient(135deg, #00a870 0%, #0bbd84 50%, #10b981 100%);
+
+  --color-success: #008b00;
+  --color-success-light: #2fa52f;
+  --color-success-muted: rgba(0, 139, 0, 0.12);
+  --color-warning: #d68800;
+  --color-warning-muted: rgba(214, 136, 0, 0.14);
+  --color-error: #e23035;
+  --color-error-muted: rgba(226, 48, 53, 0.12);
+  --color-info: #2196c4;
+  --color-info-muted: rgba(33, 150, 196, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(15, 20, 28, 0.05);
+  --shadow-md: 0 2px 8px rgba(15, 20, 28, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 20, 28, 0.10);
+  --shadow-xl: 0 16px 48px rgba(15, 20, 28, 0.14);
 }

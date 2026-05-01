@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/runs/reconcile",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/agents/tick",
+      "schedule": "* * * * *"
+    }
+  ]
+}
