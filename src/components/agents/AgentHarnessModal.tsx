@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Save, Plus, Trash2, FileText, Brain, Activity, BookOpen, RefreshCw, Zap, Sparkles, History } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import { aggregateRetrievalsByKey, type RetrievalAggregate } from '@/lib/retrievalAudit';
 
 interface Agent {
   id: string; name: string; role: string; roleLabel: string; description: string | null;
@@ -170,7 +171,8 @@ function MemoryPanel({ agentId }: { agentId: string }) {
   // Memory v4 / Phase 4 — retrieval audit. Aggregates the agent's recent
   // memory_retrieved events into a per-key map of { count, recent[] } so
   // each memory row can show "pulled into N runs / 30d" with hover details.
-  const [retrievals, setRetrievals] = useState<Record<string, { count: number; recent: Array<{ ts: string; score: number | null }> }>>({});
+  // The aggregation logic is in src/lib/retrievalAudit.ts (testable without React).
+  const [retrievals, setRetrievals] = useState<Record<string, RetrievalAggregate>>({});
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -182,20 +184,7 @@ function MemoryPanel({ agentId }: { agentId: string }) {
     // settings UI needs to show "pull frequency over 30 days".
     fetch(`/api/agents/${agentId}/activity?type=memory_retrieved&limit=100`)
       .then(r => r.json())
-      .then((events: ActivityEvent[]) => {
-        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const map: Record<string, { count: number; recent: Array<{ ts: string; score: number | null }> }> = {};
-        for (const e of events) {
-          if (new Date(e.createdAt).getTime() < cutoff) continue;
-          const retrieved: Array<{ key: string; score: number | null }> = e.payload?.retrieved || [];
-          for (const r of retrieved) {
-            const slot = (map[r.key] ||= { count: 0, recent: [] });
-            slot.count += 1;
-            if (slot.recent.length < 3) slot.recent.push({ ts: e.createdAt, score: r.score });
-          }
-        }
-        setRetrievals(map);
-      })
+      .then((events: ActivityEvent[]) => setRetrievals(aggregateRetrievalsByKey(events)))
       .catch(() => setRetrievals({}));
   }, [agentId]);
   useEffect(load, [load]);
