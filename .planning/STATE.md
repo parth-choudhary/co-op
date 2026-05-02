@@ -12,9 +12,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 - Milestone: M1 — Trust foundation for "co-op runs co-op"
 - Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives)
 - Plan: 0 of 4 in current phase
-- Status: Context gathered; ready to plan (run `/gsd-plan-phase 1`)
-- Last activity: 2026-05-02 — Phase 1 context captured at `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-CONTEXT.md`. User selected "Mobile philosophy" gray area; chose Selective redesign + Density preserved + Hybrid navigation (bottom tab bar + Drawer) + tabs Plans/Runs/Chat. Other gray areas (Ledger ambition, Existing activity-log fate, PWA identity) defaulted to Claude discretion (full-fidelity capture with two-tier retention; parallel-write `AgentActivityLog`; single Co-Op PWA). MOB-03 scope expanded — planner must add bottom tab bar deliverable to plan 01-04.
-- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-CONTEXT.md`
+- Status: Plans + UI-SPEC ready; cleared for execution (run `/gsd-execute-phase 1`)
+- Last activity: 2026-05-02 — Phase 1 UI-SPEC approved by gsd-ui-checker (6/6 dimensions PASS, no blocking issues). Status flipped draft → approved. Phase 1 directory now holds: 01-CONTEXT.md, 01-DISCUSSION-LOG.md, 01-01..01-04-PLAN.md (committed `dd00c9b` + reconciled `140e7fc`), 01-UI-SPEC.md (committed `0ab8ad0`, approved 2026-05-02). Six non-blocking action items flagged in UI-SPEC for executor (e.g., bottom-tab empty-state implementation choice, useVisualViewport scaffolding for P5 consumption).
+- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-UI-SPEC.md`
 
 Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 

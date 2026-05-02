@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: run-lifecycle-substrate-mobile-primitives
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-02
+reviewed_at: 2026-05-02
 ---
 
 # Phase 1 — UI Design Contract
