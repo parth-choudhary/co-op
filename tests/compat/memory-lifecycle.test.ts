@@ -145,8 +145,11 @@ test('markStaleAgentMemories: where clause matches kind=context AND idle past 90
 test('agentMemorySummary: returns shape { total, embedded, stale, dedupCandidates } as plain numbers', async () => {
   reset();
   // Two queryRaw calls — one for counts, one for dedup candidates.
-  queryRawResults.push([{ total: 42n, embedded: 38n, stale: 4n }]);
-  queryRawResults.push([{ pairs: 7n }]);
+  // Use BigInt(...) instead of literal `42n` because tsconfig target is
+  // ES2017 — `tsc --noEmit` rejects BigInt literals at that target even
+  // though tsx handles them fine at runtime.
+  queryRawResults.push([{ total: BigInt(42), embedded: BigInt(38), stale: BigInt(4) }]);
+  queryRawResults.push([{ pairs: BigInt(7) }]);
 
   const { agentMemorySummary } = await loadLifecycle();
   const summary = await agentMemorySummary('agent-1');
