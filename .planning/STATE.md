@@ -73,6 +73,7 @@ None yet (M1 just initialized).
 | Memory v1 | Embedding-ranked retrieval (pgvector + OpenAI embeddings + keyless fallback + audit log) | 2026-05-01 | `8be8526` | Code-complete (live verification pending) | `quick/20260501-memory-v1-embedding-rank/` |
 | Memory v2 | Project-tier shared memory | 2026-05-01 | `1b2d3bc` | Code-complete (live UI + vector verification pending) | `phases/02-memory-v2-project-tier/` |
 | Memory v3 | Lifecycle (dedup + stale flag + summary) — executed despite M1 ROADMAP deferral | 2026-05-02 | `f6f9391` | Code-complete | `phases/03-memory-v3-lifecycle/` |
+| Memory v4 | Retrieval audit UI (Retrievals tab + memory-row badges + activity endpoint filter) — executed despite M1 ROADMAP deferral; data model reusable for M1 P3 | 2026-05-02 | `c4e9580` | Code-complete | `phases/04-memory-v4-audit-ui/` |
 
 ## Session Continuity
 
