@@ -12,8 +12,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 - Milestone: M1 — Trust foundation for "co-op runs co-op"
 - Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives)
 - Plan: 0 of 4 in current phase
-- Status: Ready to plan (run `/gsd-plan-phase 1`)
-- Last activity: 2026-05-01 — M1 ROADMAP.md created from canonical 5-phase research synthesis (split into 6 phases at standard granularity).
+- Status: Context gathered; ready to plan (run `/gsd-plan-phase 1`)
+- Last activity: 2026-05-02 — Phase 1 context captured at `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-CONTEXT.md`. User selected "Mobile philosophy" gray area; chose Selective redesign + Density preserved + Hybrid navigation (bottom tab bar + Drawer) + tabs Plans/Runs/Chat. Other gray areas (Ledger ambition, Existing activity-log fate, PWA identity) defaulted to Claude discretion (full-fidelity capture with two-tier retention; parallel-write `AgentActivityLog`; single Co-Op PWA). MOB-03 scope expanded — planner must add bottom tab bar deliverable to plan 01-04.
+- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-CONTEXT.md`
 
 Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 
