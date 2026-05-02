@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Save, Plus, Trash2, FileText, Brain, Activity, BookOpen, RefreshCw, Zap, Sparkles } from 'lucide-react';
+import { X, Loader2, Save, Plus, Trash2, FileText, Brain, Activity, BookOpen, RefreshCw, Zap, Sparkles, History } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 interface Agent {
@@ -13,7 +13,7 @@ interface Memory { id: string; key: string; content: string; kind: string; sourc
 interface ActivityEvent { id: string; eventType: string; payload: any; createdAt: string; }
 interface ContextSnapshot { agentId: string; content: string; stale: boolean; updatedAt: string | null; }
 
-type Tab = 'identity' | 'soul' | 'capabilities' | 'memory' | 'context' | 'activity' | 'compiled';
+type Tab = 'identity' | 'soul' | 'capabilities' | 'memory' | 'retrievals' | 'context' | 'activity' | 'compiled';
 
 export default function AgentHarnessModal({ agent, onClose, onUpdate }: { agent: Agent; onClose: () => void; onUpdate?: (a: Agent) => void }) {
   const [tab, setTab] = useState<Tab>('identity');
@@ -33,6 +33,7 @@ export default function AgentHarnessModal({ agent, onClose, onUpdate }: { agent:
               { id: 'soul', label: 'SOUL.md', icon: Sparkles },
               { id: 'capabilities', label: 'Capabilities', icon: Zap },
               { id: 'memory', label: 'MEMORY.md', icon: Brain },
+              { id: 'retrievals', label: 'Retrievals', icon: History },
               { id: 'context', label: 'CONTEXT.md', icon: BookOpen },
               { id: 'activity', label: 'ACTIVITY.log', icon: Activity },
               { id: 'compiled', label: 'Compiled', icon: RefreshCw },
@@ -47,6 +48,7 @@ export default function AgentHarnessModal({ agent, onClose, onUpdate }: { agent:
           {tab === 'soul' && <SoulPanel agent={agent} onUpdate={onUpdate} />}
           {tab === 'capabilities' && <CapabilitiesPanel agent={agent} onUpdate={onUpdate} />}
           {tab === 'memory' && <MemoryPanel agentId={agent.id} />}
+          {tab === 'retrievals' && <RetrievalsPanel agentId={agent.id} />}
           {tab === 'context' && <ContextPanel agentId={agent.id} />}
           {tab === 'activity' && <ActivityPanel agentId={agent.id} />}
           {tab === 'compiled' && <CompiledPanel agentId={agent.id} />}
@@ -165,11 +167,36 @@ function MemoryPanel({ agentId }: { agentId: string }) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Memory | null>(null);
   const [form, setForm] = useState({ key: '', content: '', kind: 'fact' });
+  // Memory v4 / Phase 4 — retrieval audit. Aggregates the agent's recent
+  // memory_retrieved events into a per-key map of { count, recent[] } so
+  // each memory row can show "pulled into N runs / 30d" with hover details.
+  const [retrievals, setRetrievals] = useState<Record<string, { count: number; recent: Array<{ ts: string; score: number | null }> }>>({});
   const toast = useToast();
 
   const load = useCallback(() => {
     setLoading(true);
     fetch(`/api/agents/${agentId}/memory`).then(r => r.json()).then(setMemories).finally(() => setLoading(false));
+    // Pull the last 100 memory_retrieved events. Cheap aggregation: walk
+    // payload.retrieved[].key, bump counts, keep the 3 most-recent timestamps
+    // + scores per key. Limit 100 events ≈ 100 runs, far more than the
+    // settings UI needs to show "pull frequency over 30 days".
+    fetch(`/api/agents/${agentId}/activity?type=memory_retrieved&limit=100`)
+      .then(r => r.json())
+      .then((events: ActivityEvent[]) => {
+        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const map: Record<string, { count: number; recent: Array<{ ts: string; score: number | null }> }> = {};
+        for (const e of events) {
+          if (new Date(e.createdAt).getTime() < cutoff) continue;
+          const retrieved: Array<{ key: string; score: number | null }> = e.payload?.retrieved || [];
+          for (const r of retrieved) {
+            const slot = (map[r.key] ||= { count: 0, recent: [] });
+            slot.count += 1;
+            if (slot.recent.length < 3) slot.recent.push({ ts: e.createdAt, score: r.score });
+          }
+        }
+        setRetrievals(map);
+      })
+      .catch(() => setRetrievals({}));
   }, [agentId]);
   useEffect(load, [load]);
 
@@ -219,18 +246,35 @@ function MemoryPanel({ agentId }: { agentId: string }) {
         <div className="text-tertiary text-sm" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>No memories yet.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          {memories.map(m => (
+          {memories.map(m => {
+            const agg = retrievals[m.key];
+            const tooltip = agg
+              ? `Last ${agg.recent.length} retrievals:\n` + agg.recent.map(r =>
+                  `  ${new Date(r.ts).toLocaleString()}${r.score != null ? ` · score ${r.score.toFixed(3)}` : ''}`,
+                ).join('\n')
+              : 'Not retrieved in the last 30 days';
+            return (
             <div key={m.id} className="glass-card" style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <span className="badge" style={{ background: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>{m.kind}</span>
                 <span style={{ fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-sm)', fontFamily: 'var(--font-family-mono, monospace)' }}>{m.key}</span>
+                {agg && (
+                  <span
+                    className="badge"
+                    style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', fontSize: 11, cursor: 'help' }}
+                    title={tooltip}
+                  >
+                    <History size={10} /> {agg.count} pull{agg.count === 1 ? '' : 's'} / 30d
+                  </span>
+                )}
                 <span className="text-tertiary text-xs" style={{ marginLeft: 'auto' }}>{m.source}</span>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setEditing(m); setForm({ key: m.key, content: m.content, kind: m.kind }); }}><FileText size={12} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => remove(m.key)}><Trash2 size={12} /></button>
               </div>
               <div className="text-secondary text-sm" style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
@@ -272,6 +316,116 @@ function ContextPanel({ agentId }: { agentId: string }) {
         <span className="text-tertiary text-xs">{snapshot?.updatedAt ? `Updated ${new Date(snapshot.updatedAt).toLocaleString()}` : 'Never saved'}</span>
         <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving ? <Loader2 size={12} className="spin" /> : <Save size={12} />}Save</button>
       </div>
+    </div>
+  );
+}
+
+// Memory v4 / Phase 4 — retrievals view.
+// Renders memory_retrieved + project_memory_retrieved events as a clean
+// per-run timeline: when did this agent fetch which memories with what
+// query? Distinct from the general Activity tab (everything) — this view
+// is the audit surface for memory pulls specifically, so noise from card
+// updates / chat events is filtered out.
+function RetrievalsPanel({ agentId }: { agentId: string }) {
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [oldestTs, setOldestTs] = useState<string | null>(null);
+  const [reachedEnd, setReachedEnd] = useState(false);
+
+  const fetchPage = useCallback(async (before: string | null) => {
+    const url = new URL(`/api/agents/${agentId}/activity`, window.location.origin);
+    url.searchParams.set('type', 'memory_retrieved,project_memory_retrieved');
+    url.searchParams.set('limit', '50');
+    if (before) url.searchParams.set('before', before);
+    const res = await fetch(url.toString());
+    if (!res.ok) return [];
+    return (await res.json()) as ActivityEvent[];
+  }, [agentId]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchPage(null).then((page) => {
+      setEvents(page);
+      setOldestTs(page.length > 0 ? page[page.length - 1].createdAt : null);
+      setReachedEnd(page.length < 50);
+    }).finally(() => setLoading(false));
+  }, [fetchPage]);
+
+  const loadMore = async () => {
+    if (!oldestTs || reachedEnd) return;
+    setLoading(true);
+    const next = await fetchPage(oldestTs);
+    setEvents(prev => [...prev, ...next]);
+    setOldestTs(next.length > 0 ? next[next.length - 1].createdAt : oldestTs);
+    setReachedEnd(next.length < 50);
+    setLoading(false);
+  };
+
+  if (loading && events.length === 0) return <Loader2 size={20} className="spin" />;
+  if (events.length === 0) return (
+    <div className="text-tertiary text-sm" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
+      No memory retrievals recorded yet. The harness writes a memory_retrieved event whenever it pulls memory for an agent run with OPENAI_API_KEY set.
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      {events.map(e => {
+        const isProject = e.eventType === 'project_memory_retrieved';
+        const retrieved: Array<{ key: string; score: number | null }> = e.payload?.retrieved || [];
+        const query: string = e.payload?.query || '';
+        return (
+          <div key={e.id} className="glass-card" style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span className="text-tertiary text-xs">{new Date(e.createdAt).toLocaleString()}</span>
+              <span
+                className="badge"
+                style={{
+                  background: isProject ? 'rgba(99,102,241,0.15)' : 'var(--color-accent-muted)',
+                  color: isProject ? '#a5b4fc' : 'var(--color-accent)',
+                  fontSize: 11,
+                }}
+              >
+                {isProject ? 'project' : 'agent'}
+              </span>
+              <span className="text-tertiary text-xs">{retrieved.length} keys</span>
+            </div>
+            {query && (
+              <div
+                className="text-secondary text-xs"
+                style={{
+                  fontFamily: 'var(--font-family-mono, monospace)',
+                  background: 'var(--color-bg-tertiary)',
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-sm)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+                title="The trigger text the agent embedded against (truncated to 200 chars)"
+              >
+                {query}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+              {retrieved.map(r => (
+                <span
+                  key={r.key}
+                  className="badge"
+                  style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'var(--font-family-mono, monospace)' }}
+                  title={r.score != null ? `cosine similarity ${r.score.toFixed(4)}` : 'always-include row (preference / recent decision)'}
+                >
+                  {r.key}{r.score != null ? ` · ${r.score.toFixed(2)}` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {!reachedEnd && (
+        <button className="btn btn-secondary btn-sm" onClick={loadMore} disabled={loading} style={{ alignSelf: 'center', marginTop: 'var(--space-2)' }}>
+          {loading ? <Loader2 size={12} className="spin" /> : 'Load older'}
+        </button>
+      )}
     </div>
   );
 }
