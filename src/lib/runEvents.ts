@@ -28,6 +28,45 @@ export interface RunEventListOptions {
   types?: string[];
 }
 
+// Per CONTEXT D-07 — parallel-write contract. New ledger events project a
+// thin row into the existing AgentActivityLog so Memory v1 (memory_retrieved)
+// + card-activity views keep working unchanged during M1. Phase 3 reads
+// run-detail from the new ledger; v2 retires this dual-write.
+//
+// Map ledger event types to AgentActivityLog event types where there's an
+// existing analog. heartbeat / run_started / run_finished / llm_message_*
+// are runtime concerns the legacy log never tracked — those skip the
+// projection. Only side_effect events that touch a card get projected as
+// card_updated (matching the AgentEventType union in agentHarness.ts).
+const LEDGER_TO_LEGACY: Record<string, (payload: any) => string | null> = {
+  side_effect: (payload) => (payload?.entity === 'card' ? 'card_updated' : null),
+};
+
+async function projectToLegacyActivityLog(
+  runId: string,
+  eventType: string,
+  payload: unknown,
+): Promise<void> {
+  const mapper = LEDGER_TO_LEGACY[eventType];
+  if (!mapper) return;
+  const legacyType = mapper(payload);
+  if (!legacyType) return;
+  const run = await prisma.agentTaskRun.findUnique({
+    where: { id: runId },
+    select: { agentId: true },
+  });
+  if (!run) return;
+  try {
+    await prisma.agentActivityLog.create({
+      data: { agentId: run.agentId, eventType: legacyType, payload: payload as any },
+    });
+  } catch (err) {
+    // Best-effort: a dual-write failure must not roll back the ledger insert.
+    // The ledger is the source of truth; this projection is a continuity bridge.
+    console.error('[runEvents] parallel-write to AgentActivityLog failed:', err);
+  }
+}
+
 /**
  * Append a single event to the ledger for a run. Atomic: the (runId, seq)
  * unique constraint means concurrent appends serialize via the transaction.
@@ -36,6 +75,9 @@ export interface RunEventListOptions {
  * appends both reading MAX(seq)=N can both insert seq=N+1; the second
  * insert fails on the unique constraint. Caller retries — the tool-dispatch
  * wrapper in Phase 2 (REL-01) handles this with bounded backoff.
+ *
+ * After the ledger insert commits, a best-effort projection to the legacy
+ * AgentActivityLog runs (CONTEXT D-07). Failures there don't propagate.
  */
 export async function appendRunEvent(
   runId: string,
@@ -52,6 +94,7 @@ export async function appendRunEvent(
       data: { runId, seq: nextSeq, eventType, payload: payload as any },
     });
   });
+  await projectToLegacyActivityLog(runId, eventType, payload);
 }
 
 /**
