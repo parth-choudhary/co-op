@@ -178,6 +178,14 @@ model AgentTaskRun {
   subscriptionId String?
   sessionKey     String?
   idempotencyKey String?
+  // M1 Phase 1 (RUN-01, RUN-04): heartbeat + run summary + harness snapshot pointer.
+  // All nullable so existing rows stay valid.
+  heartbeatAt        DateTime?
+  harnessSnapshotId  String?
+  summaryMd          String?    @db.Text
+  harnessSnapshot    HarnessSnapshot? @relation(fields: [harnessSnapshotId], references: [id])
+  events             AgentRunEvent[]
+  diffs              RunDiff[]
   skillRuns      SkillRun[]
   startedAt      DateTime   @default(now())
   finishedAt     DateTime?
@@ -188,6 +196,52 @@ model AgentTaskRun {
   @@index([parentRunId])
   @@index([subscriptionId])
   @@index([sessionKey])
+}
+
+/// M1 Phase 1 (RUN-04): exact prompt + tool schema + plugin allowlist + run-mode in
+/// effect at run start. Phase 1 ships a placeholder shape; Plan 01-02 extends with
+/// compiledPrompt + toolSchema + pluginAllowlist + runMode + agentStateHash columns.
+model HarnessSnapshot {
+  id        String         @id @default(cuid())
+  runId     String?
+  createdAt DateTime       @default(now())
+  runs      AgentTaskRun[]
+}
+
+/// M1 Phase 1 (RUN-02): append-only ledger. Source of truth for tool calls, LLM
+/// messages, retries, side-effects, and run lifecycle events. AgentTaskRun.status
+/// is a denormalized projection — read this table for ground truth.
+/// Per-run sequence number (`seq`) ensures total ordering even when createdAt ties.
+model AgentRunEvent {
+  id        String       @id @default(cuid())
+  runId     String
+  run       AgentTaskRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  seq       BigInt
+  eventType String
+  payload   Json
+  createdAt DateTime     @default(now())
+
+  @@unique([runId, seq])
+  @@index([runId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+/// M1 Phase 1 (RUN-05): structured before/after for every entity touched by a run.
+/// `before: null` → entity created in this run. `after: null` → entity deleted.
+/// `inverseOp` populated by Phase 3 (AUD-07) for one-click revert.
+model RunDiff {
+  id        String       @id @default(cuid())
+  runId     String
+  run       AgentTaskRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  inverseOp Json?
+  createdAt DateTime     @default(now())
+
+  @@index([runId])
+  @@index([entity, entityId])
 }
 
 model WebhookIdempotency {
