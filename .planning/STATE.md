@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 ## Current Position
 
 - Milestone: M1 — Trust foundation for "co-op runs co-op"
-- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives)
-- Plan: 0 of 4 in current phase
-- Status: Plans + UI-SPEC ready; cleared for execution (run `/gsd-execute-phase 1`)
-- Last activity: 2026-05-02 — Phase 1 UI-SPEC approved by gsd-ui-checker (6/6 dimensions PASS, no blocking issues). Status flipped draft → approved. Phase 1 directory now holds: 01-CONTEXT.md, 01-DISCUSSION-LOG.md, 01-01..01-04-PLAN.md (committed `dd00c9b` + reconciled `140e7fc`), 01-UI-SPEC.md (committed `0ab8ad0`, approved 2026-05-02). Six non-blocking action items flagged in UI-SPEC for executor (e.g., bottom-tab empty-state implementation choice, useVisualViewport scaffolding for P5 consumption).
-- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-UI-SPEC.md`
+- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **PARTIALLY EXECUTED, 17 commits this session**
+- Plan: 2 of 4 plans CODE_COMPLETE; 1 of 4 ~75% done; 1 of 4 PENDING
+- Status: Mid-execution. Stopped 2026-05-04 at 65% context — see "Session Continuity" below for resume instructions.
+- Last activity: 2026-05-04 — Plans 01-01 (ledger + RunDiff + heartbeat + parallel-write) and 01-03 (instrumentation.ts + Langfuse + LLM call wrapping) shipped end-to-end. Plan 01-04 partial: vaul + viewport + manifest + icons + tokens + Drawer/BottomSheet/MobileNav primitives + Sidebar mobile adoption all in. Plan 01-02 (harness determinism) NOT started.
+- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-04-PLAN.md` (next task: 01-04.4 CardDetailModal BottomSheet adoption)
 
 Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 
@@ -78,6 +78,54 @@ None yet (M1 just initialized).
 
 ## Session Continuity
 
-Last session: 2026-05-01 — M1 roadmap created.
-Stopped at: ROADMAP.md + STATE.md + REQUIREMENTS.md traceability written; ready for `/gsd-plan-phase 1`.
-Resume file: None.
+**Last session: 2026-05-04** — Phase 1 partially executed; stopped at 65% context.
+
+### Shipped this session (17 commits)
+
+Plan 01-01 — AgentRunEvent ledger + RunDiff + heartbeat + parallel-write (CODE_COMPLETE):
+- `ac6eed9` schema deltas (AgentRunEvent + RunDiff + HarnessSnapshot placeholder + AgentTaskRun additions)
+- `905af86` runEvents.ts append-only writer
+- `44f8172` $transaction tx:any annotation fix
+- `82960e5` runDiffs.ts entity snapshot helpers
+- `c67a222` runHeartbeat.ts startRun/heartbeat/finishRun
+- `e579326` parallel-write to AgentActivityLog (D-07)
+- `e8fd738` 9 ledger contract tests (test count 94 → 103)
+
+Plan 01-03 — instrumentation + Langfuse (CODE_COMPLETE):
+- `58b8295` deps + instrumentation.ts entry point
+- `6a6888a` Langfuse singleton + traceGeneration
+- `f12f9c0` wrap Anthropic / OpenAI / CLI calls
+- `4010993` docker-compose Langfuse stanza commented
+- `98ee475` 4 env-gating tests (test count 103 → 107)
+
+Plan 01-04 — mobile primitives (PARTIAL — ~75%):
+- `b01ab99` viewport meta + manifest + placeholder PNG icons (192/512/180)
+- `35a6ad2` vaul ^1.1.2 dep
+- `5397eb9` tokens.css breakpoint + safe-area + touch-target
+- `f8133c8` useViewportLte + Drawer + BottomSheet + MobileNav components
+- `5909566` Sidebar collapses into Drawer at <768px (MOB-03)
+
+### Pending — resume here
+
+**Next commit (01-04.4 cont):** CardDetailModal adopts BottomSheet at <768px. Pattern: extract main modal body into a const, wrap in `<BottomSheet>` when `useViewportLte('md')` is true, keep `<div className="card-detail-overlay">` when desktop. The lightbox stays separate. ~1 commit.
+
+**Then 01-04.5:** BottomTabBar component + project shell layout integration. Plans/Runs/Chat tabs, current-project scoped, hidden ≥768px. ~1 commit.
+
+**Then 01-04.6:** tests/compat/mobile-primitives.test.ts (5 cases per plan: no /m/ tree, tokens shape, manifest shape, no mobile typography overrides, BottomTabBar tab list locked to Plans/Runs/Chat). ~1 commit, +5 tests.
+
+**Then Plan 01-02** (harness determinism — NOT started):
+- 01-02.1 HarnessSnapshot schema extension (compiledPrompt + toolSchema + pluginAllowlist + runMode + agentStateHash + retrievedMemories columns) + migration
+- 01-02.2 src/lib/harnessInputs.ts impure DB loader
+- 01-02.3 Refactor compileHarness → pure buildHarness + snapshotHarness writer
+- 01-02.4 tests/compat/harness-determinism.test.ts (5 cases). ~4 commits, +5 tests.
+
+**Then Phase 1 closing:** 4 SUMMARY.md files (01-01..01-04) + STATE.md final close + mark Phase 1 [x] in ROADMAP.md. ~1-2 commits.
+
+### Carryover notes
+
+- `tsc --noEmit` is clean for src/ but reports a pre-existing `scripts/capture-screenshots.ts` error (`@playwright/test` was a transitive dep that got pruned during the langfuse install). Not caused by this work; orthogonal to Phase 1.
+- `.env~` template additions (LANGFUSE_PUBLIC_KEY etc., OTEL_EXPORTER_OTLP_ENDPOINT, OPENAI_API_KEY) were written to disk but the file is gitignored (.env* pattern). Local-only.
+- Phase 1 currently shows 17 commits committed but the test count is at 107 — still 6 short of the 113 target. The pending 01-04 + 01-02 tests close the gap (5 mobile + 5 determinism = 10 more, target 117).
+- The execution chain is hand-written rather than running through the heavyweight `/gsd-execute-phase` chain because the published `@gsd-build/sdk@0.1.0` doesn't ship the `gsd-sdk query` interface the workflow expects. Manual execution preserves the same atomic-commit + test-first discipline.
+
+Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-04-PLAN.md` Task 01-04.4 onward.
