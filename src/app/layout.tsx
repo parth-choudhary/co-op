@@ -1,10 +1,34 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 import Providers from '@/components/Providers';
+
+// M1 Phase 1 / Plan 01-04.1 — viewport meta + PWA manifest + theme color.
+// `viewportFit: 'cover'` extends content under the iOS notch / Android nav
+// bar; pages must use `env(safe-area-inset-*)` from tokens.css to keep
+// content out of the unsafe zones.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#050507',
+};
 
 export const metadata: Metadata = {
   title: 'Co-Op — Build Companies with AI',
   description: 'A cooperative company-running platform where humans and AI agents work together.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Co-Op',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 const themeInitScript = `
