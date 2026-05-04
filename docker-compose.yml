@@ -48,6 +48,46 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Optional: self-hosted Langfuse for LLM/agent run tracing (M1 P1 / RUN-06).
+  # Uncomment + run `docker compose up -d langfuse langfuse-db` to enable.
+  # Defaults to a single-node setup with its own Postgres; not for production.
+  # See https://langfuse.com/self-hosting for production guidance.
+  # After bringing up, navigate to http://localhost:3001, create an admin,
+  # then copy the project's public+secret keys into .env as:
+  #   LANGFUSE_PUBLIC_KEY=...
+  #   LANGFUSE_SECRET_KEY=...
+  #   LANGFUSE_HOST=http://localhost:3001
+  # ─────────────────────────────────────────────────────────────────────────────
+  # langfuse:
+  #   image: langfuse/langfuse:3
+  #   depends_on:
+  #     langfuse-db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     DATABASE_URL: "postgresql://langfuse:langfuse@langfuse-db:5432/langfuse"
+  #     NEXTAUTH_SECRET: "generate-me-with-openssl-rand-base64-32"
+  #     SALT: "generate-me-too-with-openssl-rand-base64-32"
+  #     NEXTAUTH_URL: "http://localhost:3001"
+  #     TELEMETRY_ENABLED: "false"
+  # langfuse-db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: langfuse
+  #     POSTGRES_PASSWORD: langfuse
+  #     POSTGRES_DB: langfuse
+  #   volumes:
+  #     - langfuse_pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U langfuse"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
 volumes:
   pgdata:
   synapse_pgdata:
+  # Uncomment alongside the langfuse-db service above.
+  # langfuse_pgdata:
