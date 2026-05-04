@@ -11,6 +11,8 @@ import {
 import CoOpLogo from '@/components/CoOpLogo';
 import { signOut } from 'next-auth/react';
 import styles from './Sidebar.module.css';
+import { useViewportLte } from '@/components/mobile/useViewportLte';
+import { MobileNav } from '@/components/mobile/MobileNav';
 
 interface SidebarProps {
   user: { id: string; name: string; email: string; companyName: string; role: string };
@@ -26,14 +28,19 @@ export default function Sidebar({ user, projects, currentProject, boards, member
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  // M1 Phase 1 / Plan 01-04.4 — at <768px the sidebar collapses into a
+  // vaul Drawer triggered by a fixed hamburger; layouts that pad-left by
+  // var(--sidebar-current-width) get 0 so content fills the viewport.
+  const isMobile = useViewportLte('md');
 
-  // Reflect collapse state on <html> so layouts can shift content via CSS variable
+  // Reflect collapse state on <html> so layouts can shift content via CSS variable.
+  // On mobile the drawer is overlay-only — no padding reservation.
   useEffect(() => {
     const root = document.documentElement;
-    const token = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)';
+    const token = isMobile ? '0px' : (collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)');
     root.style.setProperty('--sidebar-current-width', token);
     return () => { root.style.removeProperty('--sidebar-current-width'); };
-  }, [collapsed]);
+  }, [collapsed, isMobile]);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [switcherSearch, setSwitcherSearch] = useState('');
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -113,8 +120,11 @@ export default function Sidebar({ user, projects, currentProject, boards, member
     !switcherSearch || p.name.toLowerCase().includes(switcherSearch.toLowerCase())
   );
 
-  return (
-    <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
+  // The full sidebar JSX, used both as desktop <aside> and as mobile drawer
+  // contents. Extracted into a const so the mobile/desktop branch below can
+  // reuse it without duplicating 200+ lines.
+  const sidebarBody = (
+    <>
       {/* Header */}
       <div className={styles.header}>
         <Link href="/" className={styles.logo}>
@@ -301,6 +311,20 @@ export default function Sidebar({ user, projects, currentProject, boards, member
           )}
         </div>
       </div>
+    </>
+  );
+
+  if (isMobile) {
+    // Mobile: hamburger trigger (fixed top-left) + drawer containing the
+    // full sidebar body. The desktop <aside> structure with collapse toggle
+    // and fixed positioning doesn't apply here — the Drawer wrapper handles
+    // overlay + dismiss + safe-area.
+    return <MobileNav>{sidebarBody}</MobileNav>;
+  }
+
+  return (
+    <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
+      {sidebarBody}
     </aside>
   );
 }
