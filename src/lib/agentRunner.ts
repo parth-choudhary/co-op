@@ -11,6 +11,7 @@ import type { PluginToolSpec, RunFrame } from './plugins/contract';
 import { getApiKey, isCliProvider } from './agentApiKeys';
 import { runAgentViaCli } from './agentCliRunner';
 import { resolveCardId } from './cardKeyAssign';
+import { traceGeneration } from './observability/langfuse';
 import {
   fetchChatHistoryShared,
   fetchCardHistoryShared,
@@ -159,12 +160,27 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
   } else if (isCliProvider(agent.modelProvider)) {
     // CLI runtimes: shell out to a locally-installed agent binary. No tool
     // dispatch — the CLI runs its own loop. We treat it as text-in / text-out.
-    result = await runAgentViaCli({
-      provider: agent.modelProvider as 'claude-cli' | 'codex-cli',
-      modelName: agent.modelName,
-      systemPrompt: systemWithFrame(system, frame),
-      userPrompt: userContent,
-    });
+    // Wrapped in a Langfuse generation span for trace continuity even though
+    // CLI processes don't expose token usage directly.
+    result = await traceGeneration(
+      {
+        name: `${agent.modelProvider}.run`,
+        model: agent.modelName,
+        input: { systemPrompt: systemWithFrame(system, frame), userPrompt: userContent },
+        agentId: opts.agentId,
+        runId: opts.runId ?? null,
+        metadata: { provider: agent.modelProvider },
+      },
+      async () => {
+        const r = await runAgentViaCli({
+          provider: agent.modelProvider as 'claude-cli' | 'codex-cli',
+          modelName: agent.modelName,
+          systemPrompt: systemWithFrame(system, frame),
+          userPrompt: userContent,
+        });
+        return { result: r };
+      },
+    );
   } else {
     throw new Error(`Unsupported provider: ${agent.modelProvider}`);
   }
@@ -229,14 +245,33 @@ async function runAnthropic(
   let totalOutput = 0;
 
   for (let round = 0; round <= maxRounds; round++) {
-    const resp = await client.messages.create({
-      model: agent.modelName,
-      max_tokens: opts.maxTokens ?? 1024,
-      system: systemWithFrame(system, frame),
-      messages,
-      temperature: agent.temperature ?? 0.7,
-      ...(tools.length > 0 ? { tools } : {}),
-    });
+    // Wrap the SDK call with the Langfuse traceGeneration helper. No-op when
+    // LANGFUSE_PUBLIC_KEY is unset; otherwise emits a generation span tagged
+    // with model + usage tokens so Phase 3 (AUD-08) can read cost telemetry.
+    const resp = await traceGeneration(
+      {
+        name: 'anthropic.messages.create',
+        model: agent.modelName,
+        input: { system: systemWithFrame(system, frame), messages, tools: tools.length > 0 ? tools : undefined },
+        agentId: opts.agentId,
+        runId: opts.runId ?? null,
+        metadata: { round, provider: 'anthropic' },
+      },
+      async () => {
+        const r = await client.messages.create({
+          model: agent.modelName,
+          max_tokens: opts.maxTokens ?? 1024,
+          system: systemWithFrame(system, frame),
+          messages,
+          temperature: agent.temperature ?? 0.7,
+          ...(tools.length > 0 ? { tools } : {}),
+        });
+        return {
+          result: r,
+          usage: { inputTokens: r.usage?.input_tokens, outputTokens: r.usage?.output_tokens },
+        };
+      },
+    );
 
     totalInput += resp.usage?.input_tokens ?? 0;
     totalOutput += resp.usage?.output_tokens ?? 0;
@@ -296,13 +331,29 @@ async function runOpenAI(
   let totalOutput = 0;
 
   for (let round = 0; round <= maxRounds; round++) {
-    const resp = await client.chat.completions.create({
-      model: agent.modelName,
-      max_tokens: opts.maxTokens ?? 1024,
-      temperature: agent.temperature ?? 0.7,
-      messages,
-      ...(tools ? { tools } : {}),
-    });
+    const resp = await traceGeneration(
+      {
+        name: 'openai.chat.completions.create',
+        model: agent.modelName,
+        input: { messages, tools: tools ?? undefined },
+        agentId: opts.agentId,
+        runId: opts.runId ?? null,
+        metadata: { round, provider: 'openai' },
+      },
+      async () => {
+        const r = await client.chat.completions.create({
+          model: agent.modelName,
+          max_tokens: opts.maxTokens ?? 1024,
+          temperature: agent.temperature ?? 0.7,
+          messages,
+          ...(tools ? { tools } : {}),
+        });
+        return {
+          result: r,
+          usage: { inputTokens: r.usage?.prompt_tokens, outputTokens: r.usage?.completion_tokens },
+        };
+      },
+    );
 
     totalInput += resp.usage?.prompt_tokens ?? 0;
     totalOutput += resp.usage?.completion_tokens ?? 0;
