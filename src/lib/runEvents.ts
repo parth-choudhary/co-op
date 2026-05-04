@@ -42,7 +42,7 @@ export async function appendRunEvent(
   eventType: RunEventType | string,
   payload: unknown,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     const max = await tx.agentRunEvent.aggregate({
       where: { runId },
       _max: { seq: true },
