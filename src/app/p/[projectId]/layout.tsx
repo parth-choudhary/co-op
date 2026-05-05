@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import prisma from '@/lib/db';
 import Sidebar from '@/components/layout/Sidebar';
+import { BottomTabBar } from '@/components/mobile/BottomTabBar';
 
 export default async function ProjectLayout({
   children,
@@ -61,6 +62,9 @@ export default async function ProjectLayout({
       <main style={{ flex: 1, minWidth: 0, minHeight: '100vh' }}>
         {children}
       </main>
+      {/* M1 Phase 1 / Plan 01-04.5 — visible only at <768px (CSS-gated).
+          Three tabs (Plans/Runs/Chat) scoped to the current project. */}
+      <BottomTabBar />
     </div>
   );
 }
