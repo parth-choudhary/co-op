@@ -13,8 +13,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 - Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **CODE_COMPLETE 2026-05-05, 24 commits across three sessions**
 - Plan: 4 of 4 plans CODE_COMPLETE
 - Status: Phase 1 closed. Ready for Phase 2 (run `/gsd-plan-phase 2`).
-- Last activity: 2026-05-05 — Plan 01-04 closed: CardDetailModal adopts BottomSheet at <768px, BottomTabBar (Plans/Runs/Chat) ships in project shell, mobile-primitives contract test added (+6). Test count 107 → 113. Plan 01-02 (harness determinism) still NOT started.
-- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-02-PLAN.md` (next task: 01-02.1 HarnessSnapshot schema extension + migration)
+- Last activity: 2026-05-05 — Plan 01-02 (harness determinism) shipped: HarnessSnapshot schema extended, compileHarness split into loadHarnessInputs + assemblePrompt + buildHarness + snapshotHarness, 7 determinism tests added. Phase 1 closed; 4 SUMMARY.md written, ROADMAP.md Phase 1 box [x]. Test count 113 → 120.
+- Resume file: `.planning/phases/02-reliability-hardening/` (after `/gsd-plan-phase 2`)
 
 Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 
