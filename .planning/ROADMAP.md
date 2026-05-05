@@ -18,7 +18,7 @@ Memory v1 + v2 (embedding-ranked retrieval, project-tier shared memory) shipped 
 - Integer phases (1, 2, 3, 4, 5, 6): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Run-lifecycle substrate + mobile primitives** — Append-only event ledger, deterministic harness, OTel/Langfuse instrumentation, and the mobile drawer / bottom-sheet / viewport tokens that every later UI inherits.
+- [x] **Phase 1: Run-lifecycle substrate + mobile primitives** — Append-only event ledger, deterministic harness, OTel/Langfuse instrumentation, and the mobile drawer / bottom-sheet / viewport tokens that every later UI inherits. **CODE_COMPLETE 2026-05-05** (24 commits, test count 94 → 120). See `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-{01..04}-SUMMARY.md`.
 - [ ] **Phase 2: Reliability hardening** — Bounded retries, iteration cap, idempotent tool calls, subprocess watchdog, tool-output quarantine, run-mode flag, manual recovery actions, and brownfield CONCERNS.md fixes.
 - [ ] **Phase 3: Visibility & audit surfaces** — `/runs` list + run-detail timeline, ledger-derived summaries, unified diff with negative-space deletes, two-tier logs with redactor, one-click revert, cost / token telemetry, and global mobile audit passes (touch targets, hover/focus parity, login/settings 375px).
 - [ ] **Phase 4: Planning-loop core** — `CardPlan` model, propose-only `planning` plugin, hash-bound approval, refusal of out-of-plan tool calls, amendment cap, Planner agent template, and the `/plans` queue UI with tiered actions plus false-approve telemetry.

@@ -29,7 +29,7 @@ Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 0 / 4 | — | — |
+| 1 | 4 / 4 ✅ | 24 commits / 3 sessions | ~6 commits/plan |
 | 2 | 0 / 4 | — | — |
 | 3 | 0 / 5 | — | — |
 | 4 | 0 / 4 | — | — |
