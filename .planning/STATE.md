@@ -10,11 +10,11 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 ## Current Position
 
 - Milestone: M1 — Trust foundation for "co-op runs co-op"
-- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **PARTIALLY EXECUTED, 17 commits this session**
-- Plan: 2 of 4 plans CODE_COMPLETE; 1 of 4 ~75% done; 1 of 4 PENDING
-- Status: Mid-execution. Stopped 2026-05-04 at 65% context — see "Session Continuity" below for resume instructions.
-- Last activity: 2026-05-04 — Plans 01-01 (ledger + RunDiff + heartbeat + parallel-write) and 01-03 (instrumentation.ts + Langfuse + LLM call wrapping) shipped end-to-end. Plan 01-04 partial: vaul + viewport + manifest + icons + tokens + Drawer/BottomSheet/MobileNav primitives + Sidebar mobile adoption all in. Plan 01-02 (harness determinism) NOT started.
-- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-04-PLAN.md` (next task: 01-04.4 CardDetailModal BottomSheet adoption)
+- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **PARTIALLY EXECUTED, 21 commits across two sessions**
+- Plan: 3 of 4 plans CODE_COMPLETE; 1 of 4 PENDING (01-02 harness determinism)
+- Status: Mid-execution. Stopped 2026-05-05 after Plan 01-04 CODE_COMPLETE — see "Session Continuity" below for resume instructions.
+- Last activity: 2026-05-05 — Plan 01-04 closed: CardDetailModal adopts BottomSheet at <768px, BottomTabBar (Plans/Runs/Chat) ships in project shell, mobile-primitives contract test added (+6). Test count 107 → 113. Plan 01-02 (harness determinism) still NOT started.
+- Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-02-PLAN.md` (next task: 01-02.1 HarnessSnapshot schema extension + migration)
 
 Progress: [░░░░░░░░░░] 0% (0 / 22 plans across all M1 phases)
 
@@ -78,9 +78,9 @@ None yet (M1 just initialized).
 
 ## Session Continuity
 
-**Last session: 2026-05-04** — Phase 1 partially executed; stopped at 65% context.
+**Last session: 2026-05-05** — Plan 01-04 CODE_COMPLETE; stopped at 67% context before starting Plan 01-02.
 
-### Shipped this session (17 commits)
+### Shipped across two sessions (21 commits)
 
 Plan 01-01 — AgentRunEvent ledger + RunDiff + heartbeat + parallel-write (CODE_COMPLETE):
 - `ac6eed9` schema deltas (AgentRunEvent + RunDiff + HarnessSnapshot placeholder + AgentTaskRun additions)
@@ -98,34 +98,34 @@ Plan 01-03 — instrumentation + Langfuse (CODE_COMPLETE):
 - `4010993` docker-compose Langfuse stanza commented
 - `98ee475` 4 env-gating tests (test count 103 → 107)
 
-Plan 01-04 — mobile primitives (PARTIAL — ~75%):
+Plan 01-04 — mobile primitives (CODE_COMPLETE):
 - `b01ab99` viewport meta + manifest + placeholder PNG icons (192/512/180)
 - `35a6ad2` vaul ^1.1.2 dep
 - `5397eb9` tokens.css breakpoint + safe-area + touch-target
 - `f8133c8` useViewportLte + Drawer + BottomSheet + MobileNav components
 - `5909566` Sidebar collapses into Drawer at <768px (MOB-03)
+- `c643d83` CardDetailModal renders as BottomSheet at <768px (MOB-04)
+- `2b6aca2` BottomTabBar — Plans/Runs/Chat tabs (D-03/D-04)
+- `fac3aad` 6 mobile-primitives contract tests (test count 107 → 113)
 
 ### Pending — resume here
 
-**Next commit (01-04.4 cont):** CardDetailModal adopts BottomSheet at <768px. Pattern: extract main modal body into a const, wrap in `<BottomSheet>` when `useViewportLte('md')` is true, keep `<div className="card-detail-overlay">` when desktop. The lightbox stays separate. ~1 commit.
+**Plan 01-02** (harness determinism — NOT started, ~4 commits, +5 tests):
+- 01-02.1 HarnessSnapshot schema extension. Add columns to the placeholder table: compiledPrompt (TEXT), toolSchema (JSONB), pluginAllowlist (TEXT[]), runMode (TEXT default 'propose-and-execute'), agentStateHash (TEXT), projectStateHash (TEXT?), retrievedMemories (JSONB), capturedAt (TIMESTAMP). New migration 20260505*_extend_harness_snapshot. Add @@index([agentId, createdAt]).
+- 01-02.2 New file src/lib/harnessInputs.ts. Pure data loader: loadHarnessInputs(agentId, ctx, now) returns the full HarnessInputs object — agent fields, project doctrine, agentMemories, projectMemories, recentActivity, kanban, ctx, now. This is the impure boundary; everything below is testable as pure JS.
+- 01-02.3 Refactor src/lib/agentHarness.ts:compileHarness. Extract the prompt-assembly body into pure buildHarness(inputs: HarnessInputs) returning { compiledPrompt, toolSchema, pluginAllowlist, runMode }. New snapshotHarness(agentId, ctx, now) calls loadHarnessInputs → buildHarness → writes a HarnessSnapshot row, returns id. Keep compileHarness as a thin backward-compat wrapper so existing callers (agentRunner.ts:136, agents/[id]/context/route.ts) don't change.
+- 01-02.4 tests/compat/harness-determinism.test.ts. 5 cases: identical inputs → identical output (twice); different now doesn't change output (no time-of-day in prompt); memory list reordering → identical output (sort is stable); different agent.systemPrompt → divergent at the systemPrompt section; ProjectMemories empty vs populated → presence/absence of "## Project Memory" block.
 
-**Then 01-04.5:** BottomTabBar component + project shell layout integration. Plans/Runs/Chat tabs, current-project scoped, hidden ≥768px. ~1 commit.
-
-**Then 01-04.6:** tests/compat/mobile-primitives.test.ts (5 cases per plan: no /m/ tree, tokens shape, manifest shape, no mobile typography overrides, BottomTabBar tab list locked to Plans/Runs/Chat). ~1 commit, +5 tests.
-
-**Then Plan 01-02** (harness determinism — NOT started):
-- 01-02.1 HarnessSnapshot schema extension (compiledPrompt + toolSchema + pluginAllowlist + runMode + agentStateHash + retrievedMemories columns) + migration
-- 01-02.2 src/lib/harnessInputs.ts impure DB loader
-- 01-02.3 Refactor compileHarness → pure buildHarness + snapshotHarness writer
-- 01-02.4 tests/compat/harness-determinism.test.ts (5 cases). ~4 commits, +5 tests.
-
-**Then Phase 1 closing:** 4 SUMMARY.md files (01-01..01-04) + STATE.md final close + mark Phase 1 [x] in ROADMAP.md. ~1-2 commits.
+**Then Phase 1 closing** (~1-2 commits):
+- 4 SUMMARY.md files at .planning/phases/01-run-lifecycle-substrate-mobile-primitives/{01-01,01-02,01-03,01-04}-SUMMARY.md mirroring the format used in memory v1-v4 SUMMARYs
+- STATE.md "Status" → COMPLETE; mark Phase 1 [x] in ROADMAP.md
+- Test count target after Phase 1 closes: 118 (113 now + 5 from 01-02.4)
 
 ### Carryover notes
 
 - `tsc --noEmit` is clean for src/ but reports a pre-existing `scripts/capture-screenshots.ts` error (`@playwright/test` was a transitive dep that got pruned during the langfuse install). Not caused by this work; orthogonal to Phase 1.
 - `.env~` template additions (LANGFUSE_PUBLIC_KEY etc., OTEL_EXPORTER_OTLP_ENDPOINT, OPENAI_API_KEY) were written to disk but the file is gitignored (.env* pattern). Local-only.
-- Phase 1 currently shows 17 commits committed but the test count is at 107 — still 6 short of the 113 target. The pending 01-04 + 01-02 tests close the gap (5 mobile + 5 determinism = 10 more, target 117).
+- Phase 1 currently shows 21 commits in (push'd to origin/main through `fac3aad`). Test count 113. Target after 01-02 closes: 118.
 - The execution chain is hand-written rather than running through the heavyweight `/gsd-execute-phase` chain because the published `@gsd-build/sdk@0.1.0` doesn't ship the `gsd-sdk query` interface the workflow expects. Manual execution preserves the same atomic-commit + test-first discipline.
 
-Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-04-PLAN.md` Task 01-04.4 onward.
+Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-02-PLAN.md` (start at Task 01-02.1 HarnessSnapshot schema extension).
