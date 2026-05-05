@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import prisma from './db';
 import { formatCardKey } from './cardKeys';
 import { pathForCardKey } from './appRoutes';
@@ -403,11 +404,60 @@ export async function retrieveProjectMemories(
   }));
 }
 
-export async function compileHarness(agentId: string, ctx: HarnessContext = {}): Promise<string> {
-  // Two-phase fetch. The agent record drives projectId-scoped queries
-  // (project memory + project doctrine), so we resolve it first, then
-  // parallelize everything else. Net round-trips: 2 (was: 3 — the project
-  // doctrine fetch used to be sequential AFTER the Promise.all).
+// M1 Phase 1 / Plan 01-02 — deterministic harness split.
+//
+// Three layered functions:
+//   loadHarnessInputs(agentId, ctx, now)      — impure DB loader; returns HarnessInputs
+//   assemblePrompt(inputs)                     — pure assembler; same inputs ⇒ same string
+//   buildHarness(inputs)                       — pure; returns { compiledPrompt, toolSchema, pluginAllowlist, runMode }
+//   snapshotHarness(agentId, ctx, now?)        — orchestrator: load → build → write HarnessSnapshot row
+//
+// compileHarness is preserved as a thin backward-compat wrapper so existing
+// callers (agentRunner.ts:136, agents/[id]/context/route.ts) keep working
+// without modification. Phase 2 wires runAgent to call snapshotHarness so
+// the run row gets a populated harnessSnapshotId.
+
+export interface HarnessAgentSnapshot {
+  id: string;
+  name: string;
+  role: string;
+  roleLabel: string;
+  description: string | null;
+  systemPrompt: string;
+  soulMd: string | null;
+  plugins: string[];
+  projectId: string | null;
+  /** Phase 2 (REL-06) adds AIAgent.runMode column; for Phase 1 default below. */
+  runMode: 'read-only' | 'propose-only' | 'propose-and-execute';
+}
+
+export interface HarnessProjectSnapshot {
+  name: string;
+  about: string | null;
+  aboutUpdatedAt: Date | null;
+  userMd: string | null;
+  userMdUpdatedAt: Date | null;
+  agentsMd: string | null;
+  agentsMdUpdatedAt: Date | null;
+}
+
+export interface HarnessInputs {
+  agent: HarnessAgentSnapshot;
+  project: HarnessProjectSnapshot | null;
+  agentMemories: RetrievedMemory[];
+  projectMemories: RetrievedMemory[];
+  snapshot: { content: string | null; stale: boolean } | null;
+  recentActivity: Array<{ eventType: string; payload: any; createdAt: Date }>;
+  kanban: any;
+  ctx: HarnessContext;
+  now: Date;
+}
+
+export async function loadHarnessInputs(
+  agentId: string,
+  ctx: HarnessContext,
+  now: Date,
+): Promise<HarnessInputs> {
   const agent = await prisma.aIAgent.findUnique({ where: { id: agentId } });
   if (!agent) throw new Error('Agent not found');
 
@@ -432,6 +482,38 @@ export async function compileHarness(agentId: string, ctx: HarnessContext = {}):
       : Promise.resolve(null),
   ]);
 
+  return {
+    agent: {
+      id: agent.id,
+      name: agent.name,
+      role: agent.role,
+      roleLabel: agent.roleLabel,
+      description: agent.description,
+      systemPrompt: agent.systemPrompt,
+      soulMd: agent.soulMd ?? null,
+      plugins: agent.plugins ?? [],
+      projectId: agent.projectId ?? null,
+      // Phase 2 reads from agent.runMode column once it exists.
+      runMode: 'propose-and-execute',
+    },
+    project,
+    agentMemories: memories,
+    projectMemories,
+    snapshot: snapshot ? { content: snapshot.content, stale: snapshot.stale } : null,
+    recentActivity,
+    kanban,
+    ctx,
+    now,
+  };
+}
+
+/**
+ * Pure prompt assembler. Same inputs ⇒ identical output across calls and
+ * resumes (RUN-03). Reads NEITHER the database NOR the wall clock. Tested
+ * by tests/compat/harness-determinism.test.ts.
+ */
+export function assemblePrompt(inputs: HarnessInputs): string {
+  const { agent, project, agentMemories: memories, projectMemories, snapshot, recentActivity, kanban, ctx } = inputs;
   const parts: string[] = [];
   parts.push(`# ${agent.name} (${agent.roleLabel})`);
   if (agent.description) parts.push(agent.description);
@@ -588,6 +670,97 @@ export async function compileHarness(agentId: string, ctx: HarnessContext = {}):
   }
 
   return parts.join('\n');
+}
+
+/**
+ * Pure builder. Returns the four fields a HarnessSnapshot row captures.
+ * No DB reads, no clock reads — fully deterministic on inputs.
+ *
+ * toolSchema is intentionally [] in Phase 1: the runtime tool list is
+ * computed by agentRunner.ts via getAnthropicTools/getOpenAITools at run
+ * start. Phase 2 will pass the resolved tool schema into snapshotHarness
+ * via an options parameter so the captured snapshot reflects exactly what
+ * the model received. For now the column is preserved as an empty array
+ * so the schema stays stable.
+ */
+export function buildHarness(inputs: HarnessInputs): {
+  compiledPrompt: string;
+  toolSchema: any[];
+  pluginAllowlist: string[];
+  runMode: string;
+} {
+  const compiledPrompt = assemblePrompt(inputs);
+  const pluginAllowlist =
+    inputs.agent.plugins && inputs.agent.plugins.length > 0
+      ? inputs.agent.plugins
+      : ['kanban', 'about', 'coding', 'scheduler'];
+  return {
+    compiledPrompt,
+    toolSchema: [],
+    pluginAllowlist,
+    runMode: inputs.agent.runMode,
+  };
+}
+
+/**
+ * Stable JSON stringify — sorts object keys recursively so the same logical
+ * data always produces the same string. Used for state-hash inputs so a
+ * Prisma row returned with different key order doesn't drift the hash.
+ */
+function stableStringify(obj: any): string {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+}
+
+/**
+ * Orchestrator: load inputs → build harness → persist HarnessSnapshot row →
+ * return the new snapshot id. Phase 2 wires runAgent to call this at run
+ * start so AgentTaskRun.harnessSnapshotId is populated. Phase 1 ships the
+ * function but doesn't yet wire it.
+ */
+export async function snapshotHarness(
+  agentId: string,
+  ctx: HarnessContext = {},
+  now: Date = new Date(),
+): Promise<string> {
+  const inputs = await loadHarnessInputs(agentId, ctx, now);
+  const built = buildHarness(inputs);
+  const agentStateHash = createHash('sha256').update(stableStringify(inputs.agent)).digest('hex');
+  const projectStateHash = inputs.project
+    ? createHash('sha256').update(stableStringify(inputs.project)).digest('hex')
+    : null;
+
+  const snap = await prisma.harnessSnapshot.create({
+    data: {
+      agentId,
+      compiledPrompt: built.compiledPrompt,
+      toolSchema: built.toolSchema as any,
+      pluginAllowlist: built.pluginAllowlist,
+      runMode: built.runMode,
+      agentStateHash,
+      projectStateHash,
+      retrievedMemories: {
+        agentMemories: inputs.agentMemories,
+        projectMemories: inputs.projectMemories,
+      } as any,
+      capturedAt: now,
+    },
+  });
+  return snap.id;
+}
+
+/**
+ * Backward-compat wrapper. Loads inputs and returns the assembled prompt
+ * string. Existing callers (agentRunner.ts:136, agents/[id]/context/route.ts)
+ * use this; Phase 2 migrates runAgent to snapshotHarness so the run row
+ * gets a populated harnessSnapshotId. Until then this path does NOT write
+ * a HarnessSnapshot — it only reads + assembles.
+ */
+export async function compileHarness(agentId: string, ctx: HarnessContext = {}): Promise<string> {
+  const inputs = await loadHarnessInputs(agentId, ctx, new Date());
+  return assemblePrompt(inputs);
 }
 
 export async function verifyAgentAccess(agentId: string, userId: string): Promise<{ ok: true; projectId: string } | { ok: false; status: number }> {
