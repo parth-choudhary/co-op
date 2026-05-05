@@ -11,6 +11,8 @@ import MessageBody from '@/components/MessageBody';
 import RichComposer, { type RichComposerHandle } from '@/components/editor/RichComposer';
 import { useCardHydrator } from '@/components/editor/useCardHydrator';
 import type { MentionItem } from '@/components/editor/MentionList';
+import { useViewportLte } from '@/components/mobile/useViewportLte';
+import { BottomSheet } from '@/components/mobile/BottomSheet';
 
 // ---- Types ----
 interface MemberData {
@@ -73,6 +75,11 @@ interface Props {
 }
 
 export default function CardDetailModal({ cardId, columnName, projectId, onClose, onUpdate, onDelete }: Props) {
+  // M1 Phase 1 / Plan 01-04.4 — at <768px the modal renders as a vaul
+  // BottomSheet instead of an overlay+panel. Same business logic, different
+  // outer chrome. Phase 3 (MOB-09..11) will polish the inner layout for the
+  // smaller width; Phase 1 just swaps the wrapper.
+  const isMobile = useViewportLte('md');
   const [card, setCard] = useState<CardDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
@@ -331,9 +338,11 @@ export default function CardDetailModal({ cardId, columnName, projectId, onClose
     return Math.round((cl.items.filter(i => i.isChecked).length / cl.items.length) * 100);
   };
 
-  return (
-    <div className="card-detail-overlay" onClick={onClose}>
-      <div className="card-detail-modal" onClick={e => e.stopPropagation()}>
+  // Extract the modal contents so the same body can render inside the
+  // desktop overlay+panel chrome OR a vaul BottomSheet at <768px without
+  // duplicating ~550 lines.
+  const modalBody = (
+    <>
         {/* Header */}
         <div className="card-detail-header">
           <div style={{ flex: 1 }}>
@@ -878,29 +887,55 @@ export default function CardDetailModal({ cardId, columnName, projectId, onClose
             )}
           </div>
         </div>
+    </>
+  );
+
+  const lightboxNode = lightbox ? (
+    <div
+      onClick={() => setLightbox(null)}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', cursor: 'zoom-out' }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
+        className="btn btn-ghost btn-icon"
+        style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', color: '#fff', width: 40, height: 40 }}
+        title="Close"
+        aria-label="Close"
+      >
+        <X size={20} />
+      </button>
+      <img
+        src={lightbox.url}
+        alt={lightbox.name}
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', cursor: 'default' }}
+      />
+    </div>
+  ) : null;
+
+  if (isMobile) {
+    // Mobile: vaul BottomSheet replaces the overlay+panel chrome. The
+    // existing card-detail-header inside modalBody renders inside the sheet's
+    // scrollable body — Phase 3 (MOB-09..11) will collapse the redundant
+    // close button and tighten spacing for the smaller width. For Phase 1
+    // we accept the visual redundancy in service of swapping the wrapper
+    // with one source-of-truth body.
+    return (
+      <>
+        <BottomSheet open={true} onClose={onClose} title={card.title}>
+          {modalBody}
+        </BottomSheet>
+        {lightboxNode}
+      </>
+    );
+  }
+
+  return (
+    <div className="card-detail-overlay" onClick={onClose}>
+      <div className="card-detail-modal" onClick={e => e.stopPropagation()}>
+        {modalBody}
       </div>
-      {lightbox && (
-        <div
-          onClick={() => setLightbox(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', cursor: 'zoom-out' }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
-            className="btn btn-ghost btn-icon"
-            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', color: '#fff', width: 40, height: 40 }}
-            title="Close"
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
-          <img
-            src={lightbox.url}
-            alt={lightbox.name}
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', cursor: 'default' }}
-          />
-        </div>
-      )}
+      {lightboxNode}
     </div>
   );
 }
