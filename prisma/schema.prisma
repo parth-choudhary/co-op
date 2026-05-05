@@ -199,13 +199,26 @@ model AgentTaskRun {
 }
 
 /// M1 Phase 1 (RUN-04): exact prompt + tool schema + plugin allowlist + run-mode in
-/// effect at run start. Phase 1 ships a placeholder shape; Plan 01-02 extends with
-/// compiledPrompt + toolSchema + pluginAllowlist + runMode + agentStateHash columns.
+/// effect at run start. Plan 01-02 extends the placeholder shape with the captured
+/// inputs needed for deterministic resume + Phase 4 plan-review introspection.
+/// retrievedMemories captures both tiers ({ agentMemories, projectMemories }) so the
+/// planner UI can show "what did the planner see when proposing?".
 model HarnessSnapshot {
-  id        String         @id @default(cuid())
-  runId     String?
-  createdAt DateTime       @default(now())
-  runs      AgentTaskRun[]
+  id                String         @id @default(cuid())
+  runId             String?
+  agentId           String
+  compiledPrompt    String         @db.Text
+  toolSchema        Json
+  pluginAllowlist   String[]
+  runMode           String         @default("propose-and-execute")
+  agentStateHash    String
+  projectStateHash  String?
+  retrievedMemories Json
+  capturedAt        DateTime
+  createdAt         DateTime       @default(now())
+  runs              AgentTaskRun[]
+
+  @@index([agentId, createdAt])
 }
 
 /// M1 Phase 1 (RUN-02): append-only ledger. Source of truth for tool calls, LLM
