@@ -10,9 +10,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-01)
 ## Current Position
 
 - Milestone: M1 — Trust foundation for "co-op runs co-op"
-- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **PARTIALLY EXECUTED, 21 commits across two sessions**
-- Plan: 3 of 4 plans CODE_COMPLETE; 1 of 4 PENDING (01-02 harness determinism)
-- Status: Mid-execution. Stopped 2026-05-05 after Plan 01-04 CODE_COMPLETE — see "Session Continuity" below for resume instructions.
+- Phase: 1 of 6 (Run-lifecycle substrate + mobile primitives) — **CODE_COMPLETE 2026-05-05, 24 commits across three sessions**
+- Plan: 4 of 4 plans CODE_COMPLETE
+- Status: Phase 1 closed. Ready for Phase 2 (run `/gsd-plan-phase 2`).
 - Last activity: 2026-05-05 — Plan 01-04 closed: CardDetailModal adopts BottomSheet at <768px, BottomTabBar (Plans/Runs/Chat) ships in project shell, mobile-primitives contract test added (+6). Test count 107 → 113. Plan 01-02 (harness determinism) still NOT started.
 - Resume file: `.planning/phases/01-run-lifecycle-substrate-mobile-primitives/01-02-PLAN.md` (next task: 01-02.1 HarnessSnapshot schema extension + migration)
 
