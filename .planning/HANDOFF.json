@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-06T14:35:00Z",
+  "context": "between-phases",
+  "phase": "1",
+  "phase_name": "Run-lifecycle substrate + mobile primitives",
+  "phase_dir": "01-run-lifecycle-substrate-mobile-primitives",
+  "phase_status": "CODE_COMPLETE",
+  "next_milestone_action": "self-host-langfuse",
+  "status": "paused",
+  "completed_phases": [
+    {"id": "01-01", "name": "AgentRunEvent ledger + RunDiff + heartbeat + parallel-write", "status": "code-complete", "final_commit": "e8fd738"},
+    {"id": "01-02", "name": "HarnessSnapshot + buildHarness/snapshotHarness deterministic split", "status": "code-complete", "final_commit": "204b2e0"},
+    {"id": "01-03", "name": "instrumentation.ts + Langfuse SDK + LLM call wrapping", "status": "code-complete", "final_commit": "98ee475"},
+    {"id": "01-04", "name": "Mobile primitives: viewport + tokens + Drawer/BottomSheet/BottomTabBar + PWA", "status": "code-complete", "final_commit": "fac3aad"}
+  ],
+  "remaining_tasks": [
+    {
+      "id": "langfuse-self-host",
+      "type": "setup",
+      "name": "Install + configure self-hosted Langfuse v3 stack",
+      "scope": "Replace commented stanza in docker-compose.yml with full v3 stack (web + worker + Postgres + Clickhouse + Redis + MinIO). Wire bootstrap env vars so admin user + Co-Op project are created on first start. Generate secrets, write to .env (gitignored). Verify all 5 containers reach healthy. Add LANGFUSE_PUBLIC_KEY/SECRET_KEY/HOST to .env so traceGeneration in agentRunner.ts picks them up.",
+      "estimated_commits": 2,
+      "estimated_context": "fresh session recommended — heavy work (5 containers, image pulls)"
+    },
+    {
+      "id": "phase-2-plan",
+      "type": "phase",
+      "name": "M1 Phase 2 — Reliability hardening",
+      "scope": "Bounded retries (REL-01), iteration cap + wall-clock budget (REL-02), tool-call idempotency via WebhookIdempotency.tool:<name> scope (REL-03), subprocess watchdog + isolated HOME + boot reaper (REL-04), tool-output quarantine envelope + classifier (REL-05), AIAgent.runMode column + enforcement (REL-06), manual retry/re-run/cancel API + buttons (REL-07), stuck self-escalation (REL-08), CONCERNS.md fixes (REL-09)",
+      "next_command": "/gsd-plan-phase 2",
+      "estimated_commits": "~15-20 across 4 plans"
+    }
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {
+      "action": "Live verification of Phase 1",
+      "context": "tsc + tests cover structural contracts; runtime behavior (browser smoke at 375×667, Langfuse trace inspection with keys set, PWA Lighthouse) requires a human running the dev server",
+      "blocking": false
+    },
+    {
+      "action": "Live verification of Memory v1 (pre-M1 carryover)",
+      "context": "Set OPENAI_API_KEY, write 5+ memories, send a topical message, confirm AgentActivityLog records a memory_retrieved row with relevant keys only. STATE.md flags this as needing to clear before P3 audit work.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {"decision": "Self-host Langfuse v3 (not Cloud free tier)", "rationale": "User asked for docker compose setup — explicit self-host signal", "phase": "between-phases"},
+    {"decision": "Bootstrap admin user + project via LANGFUSE_INIT_* env vars", "rationale": "Avoids browser-onboarding step; keys are deterministic from .env so traceGeneration picks them up immediately", "phase": "between-phases"}
+  ],
+  "uncommitted_files": [],
+  "session_metrics": {
+    "phase_1_total_commits": 28,
+    "phase_1_test_count_delta": "94 → 120 (+26)",
+    "phase_1_sessions": 4,
+    "stop_reason": "context budget at 75% (CRITICAL warning); next task = Langfuse self-host (5 containers + secrets + verification = ~8 tool calls minimum, high crash risk mid-task)"
+  },
+  "next_action": "Read .planning/.continue-here.md for the Langfuse self-host instructions. Resume in a fresh session — paste the brief in the markdown file as the first user message."
+}
