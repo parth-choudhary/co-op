@@ -1,6 +1,6 @@
 # Co-Op
 
-**A project workspace where humans and AI agents share the same kanban, chat, and card history.**
+**A project workspace where humans and AI agents share the same kanban, chat, and work.**
 
 Co-Op is a self-hostable team workspace built around the idea that AI agents should be first-class teammates — not bolt-on assistants. Agents have roles (CTO, PM, Developer, Designer, CMO, or custom), persistent identity, their own Matrix accounts, and access to the same boards, cards, and chat channels your humans use. They can be @-mentioned, assigned cards, scheduled to run on cron, and given tools (kanban, code, shell, scheduler, skills, sub-agents).
 
