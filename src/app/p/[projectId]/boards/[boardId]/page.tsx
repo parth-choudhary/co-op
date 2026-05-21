@@ -279,7 +279,6 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
         onMouseUp={onBoardMouseUp}
         onMouseLeave={onBoardMouseUp}
         className="kanban-scroll"
-        data-coach-target="board"
         style={{ flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'auto', padding: 'var(--space-4) var(--space-8)', cursor: 'grab' }}>
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="board" type="COLUMN" direction="horizontal">
@@ -290,6 +289,10 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
                   <Draggable key={col.id} draggableId={col.id} index={colIdx}>
                     {(colProvided, colSnapshot) => (
                       <div ref={colProvided.innerRef} {...colProvided.draggableProps}
+                        // Onboarding-coach anchor: highlight the first column on step 1.
+                        // The scroll container was too wide to outline usefully; the
+                        // To Do column is also where the user is told to drag *from*.
+                        {...(colIdx === 0 ? { 'data-coach-target': 'board' } : {})}
                         style={{ ...colProvided.draggableProps.style, width: 'var(--kanban-column-width)', flexShrink: 0, opacity: colSnapshot.isDragging ? 0.8 : 1 }}>
                         {/* Column header */}
                         <div {...colProvided.dragHandleProps}

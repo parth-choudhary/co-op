@@ -111,13 +111,13 @@ export const COACH_STEPS: CoachStep[] = [
   {
     id: 'board-intro',
     title: 'This is your board',
-    body: 'Cards flow left-to-right through columns. Try dragging the second card from To Do into In Progress.',
+    body: 'Cards live in columns and flow left-to-right as work progresses. Try dragging the second card from this To Do column into In Progress.',
     target: '[data-coach-target="board"]',
   },
   {
     id: 'card-detail',
     title: 'Open a card',
-    body: "Click 'Say hi to Aria' — every card has comments, an assignee, a checklist, and a runs panel.",
+    body: "Click '👋 Start here' to open it — every card carries comments, an assignee, a checklist, and a runs panel.",
     target: '[data-coach-target="card-list"]',
   },
   {
