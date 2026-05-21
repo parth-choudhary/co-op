@@ -56,6 +56,10 @@ export async function traceGeneration<T>(
     return result;
   }
   const trace = lf.trace({
+    // Pass id explicitly when we have a runId so the trace URL is deterministic
+    // (`${LANGFUSE_HOST}/project/<pid>/traces/<runId>`). Without id, Langfuse
+    // mints a UUID we'd have to round-trip back into the DB to display.
+    ...(opts.runId ? { id: opts.runId } : {}),
     name: opts.runId ? `run/${opts.runId}` : opts.name,
     metadata: { agentId: opts.agentId ?? null, ...opts.metadata },
   });
@@ -81,4 +85,36 @@ export async function traceGeneration<T>(
     gen.end({ output: { error: String(err) } as any, level: 'ERROR' });
     throw err;
   }
+}
+
+// Project-id source of truth for the deep-link URLs below. The bootstrap flow
+// in docker-compose seeds a project whose id == LANGFUSE_INIT_PROJECT_ID; if
+// the user pointed the SDK at a different project, they can override that
+// explicitly via LANGFUSE_PROJECT_ID without touching bootstrap.
+function projectId(): string | null {
+  return process.env.LANGFUSE_PROJECT_ID || process.env.LANGFUSE_INIT_PROJECT_ID || null;
+}
+
+function baseUrl(): string | null {
+  const host = process.env.LANGFUSE_HOST;
+  return host ? host.replace(/\/+$/, '') : null;
+}
+
+/** Public URL to the Co-Op project's traces page, or null if Langfuse isn't
+ *  configured. Used by the AgentHarnessModal "Open in Langfuse" link. */
+export function langfuseProjectUrl(): string | null {
+  const host = baseUrl();
+  const pid = projectId();
+  if (!host || !pid) return null;
+  return `${host}/project/${pid}`;
+}
+
+/** Per-run deep link, or null if either Langfuse is unconfigured or no runId.
+ *  Trace ids are forced to match our runIds (see traceGeneration above) so this
+ *  URL is valid without round-tripping the auto-generated trace id back. */
+export function langfuseTraceUrl(runId: string | null | undefined): string | null {
+  if (!runId) return null;
+  const base = langfuseProjectUrl();
+  if (!base) return null;
+  return `${base}/traces/${runId}`;
 }

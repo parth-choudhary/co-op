@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Save, Plus, Trash2, FileText, Brain, Activity, BookOpen, RefreshCw, Zap, Sparkles, History } from 'lucide-react';
+import { X, Loader2, Save, Plus, Trash2, FileText, Brain, Activity, BookOpen, RefreshCw, Zap, Sparkles, History, ExternalLink } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { aggregateRetrievalsByKey, type RetrievalAggregate } from '@/lib/retrievalAudit';
 
@@ -422,23 +422,61 @@ function RetrievalsPanel({ agentId }: { agentId: string }) {
 function ActivityPanel({ agentId }: { agentId: string }) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  // Langfuse deep-link config — `null` while loading, `{ enabled: false }`
+  // when the SDK is unconfigured. The button + per-row links are gated on
+  // `lf.enabled` so the UI is unchanged for users without Langfuse running.
+  const [lf, setLf] = useState<{ enabled: boolean; projectUrl?: string } | null>(null);
   useEffect(() => {
     fetch(`/api/agents/${agentId}/activity?limit=100`).then(r => r.json()).then(setEvents).finally(() => setLoading(false));
+    fetch('/api/observability/langfuse').then(r => r.ok ? r.json() : { enabled: false }).then(setLf).catch(() => setLf({ enabled: false }));
   }, [agentId]);
 
   if (loading) return <Loader2 size={20} className="spin" />;
-  if (events.length === 0) return <div className="text-tertiary text-sm" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>No activity yet.</div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'var(--font-size-xs)' }}>
-      {events.map(e => (
-        <div key={e.id} className="glass-card" style={{ padding: 'var(--space-2) var(--space-3)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-            <span className="text-tertiary">{new Date(e.createdAt).toLocaleString()}</span>
-            <span className="badge" style={{ background: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>{e.eventType}</span>
-          </div>
-          <div className="text-secondary" style={{ marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(e.payload, null, 2)}</div>
+      {lf?.enabled && lf.projectUrl && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-1)' }}>
+          <a
+            href={lf.projectUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs"
+            style={{ color: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            title="Open Langfuse traces for this deployment"
+          >
+            Open in Langfuse <ExternalLink size={10} />
+          </a>
         </div>
-      ))}
+      )}
+      {events.length === 0 ? (
+        <div className="text-tertiary text-sm" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>No activity yet.</div>
+      ) : events.map(e => {
+        // Per-row deep link when this event came from a traced run. The trace
+        // id is keyed by our runId (see src/lib/observability/langfuse.ts) so
+        // the URL is computable without round-tripping the trace id.
+        const runId: string | undefined = e.payload?.runId;
+        const traceUrl = lf?.enabled && lf.projectUrl && runId ? `${lf.projectUrl}/traces/${runId}` : null;
+        return (
+          <div key={e.id} className="glass-card" style={{ padding: 'var(--space-2) var(--space-3)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <span className="text-tertiary">{new Date(e.createdAt).toLocaleString()}</span>
+              <span className="badge" style={{ background: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>{e.eventType}</span>
+              {traceUrl && (
+                <a
+                  href={traceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ marginLeft: 'auto', color: 'var(--color-text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                  title="View trace in Langfuse"
+                >
+                  trace <ExternalLink size={10} />
+                </a>
+              )}
+            </div>
+            <div className="text-secondary" style={{ marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(e.payload, null, 2)}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
