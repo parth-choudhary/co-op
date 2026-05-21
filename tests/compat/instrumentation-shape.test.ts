@@ -49,3 +49,49 @@ test('register: resolves without throwing when OTEL_EXPORTER_OTLP_ENDPOINT is un
   const mod = await import('../../instrumentation');
   await assert.doesNotReject(mod.register());
 });
+
+// --- langfuseProjectUrl / langfuseTraceUrl ---------------------------------
+// These power the "Open in Langfuse" + per-run "trace ↗" links in the agent
+// harness ACTIVITY.log tab. Contract: null in / null out when Langfuse isn't
+// configured; deterministic URLs when it is. Trace ids are forced to runId so
+// the URLs are computable without any Langfuse round-trip.
+
+test('langfuseProjectUrl: null when LANGFUSE_HOST is unset', async () => {
+  delete process.env.LANGFUSE_HOST;
+  delete process.env.LANGFUSE_INIT_PROJECT_ID;
+  delete process.env.LANGFUSE_PROJECT_ID;
+  const { langfuseProjectUrl } = await import('../../src/lib/observability/langfuse');
+  assert.equal(langfuseProjectUrl(), null);
+});
+
+test('langfuseProjectUrl: null when project id is unset (host alone is not enough)', async () => {
+  process.env.LANGFUSE_HOST = 'http://localhost:3001';
+  delete process.env.LANGFUSE_INIT_PROJECT_ID;
+  delete process.env.LANGFUSE_PROJECT_ID;
+  const { langfuseProjectUrl } = await import('../../src/lib/observability/langfuse');
+  assert.equal(langfuseProjectUrl(), null);
+  delete process.env.LANGFUSE_HOST;
+});
+
+test('langfuseProjectUrl + langfuseTraceUrl: composed URL is stable, trailing slash on host is normalized', async () => {
+  process.env.LANGFUSE_HOST = 'http://localhost:3001/';
+  process.env.LANGFUSE_INIT_PROJECT_ID = 'co-op-dev';
+  const { langfuseProjectUrl, langfuseTraceUrl } = await import('../../src/lib/observability/langfuse');
+  assert.equal(langfuseProjectUrl(), 'http://localhost:3001/project/co-op-dev');
+  assert.equal(langfuseTraceUrl('abc-123'), 'http://localhost:3001/project/co-op-dev/traces/abc-123');
+  assert.equal(langfuseTraceUrl(null), null);
+  assert.equal(langfuseTraceUrl(undefined), null);
+  delete process.env.LANGFUSE_HOST;
+  delete process.env.LANGFUSE_INIT_PROJECT_ID;
+});
+
+test('langfuseProjectUrl: LANGFUSE_PROJECT_ID overrides LANGFUSE_INIT_PROJECT_ID', async () => {
+  process.env.LANGFUSE_HOST = 'http://localhost:3001';
+  process.env.LANGFUSE_INIT_PROJECT_ID = 'co-op-dev';
+  process.env.LANGFUSE_PROJECT_ID = 'co-op-prod';
+  const { langfuseProjectUrl } = await import('../../src/lib/observability/langfuse');
+  assert.equal(langfuseProjectUrl(), 'http://localhost:3001/project/co-op-prod');
+  delete process.env.LANGFUSE_HOST;
+  delete process.env.LANGFUSE_INIT_PROJECT_ID;
+  delete process.env.LANGFUSE_PROJECT_ID;
+});
