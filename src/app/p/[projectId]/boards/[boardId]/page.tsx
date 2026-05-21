@@ -279,6 +279,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
         onMouseUp={onBoardMouseUp}
         onMouseLeave={onBoardMouseUp}
         className="kanban-scroll"
+        data-coach-target="board"
         style={{ flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'auto', padding: 'var(--space-4) var(--space-8)', cursor: 'grab' }}>
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="board" type="COLUMN" direction="horizontal">
@@ -342,6 +343,9 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
                                   {(provided, snapshot) => (
                                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                                       className="glass-card" style={{ ...provided.draggableProps.style, padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-2)', cursor: 'grab', opacity: snapshot.isDragging ? 0.8 : 1, borderLeft: `3px solid ${priorityColors[card.priority] || 'var(--color-text-tertiary)'}` }}
+                                      // Tag the very first card on the very first column so the onboarding
+                                      // coach can anchor its "open a card" step at a real element.
+                                      {...(colIdx === 0 && idx === 0 ? { 'data-coach-target': 'card-list' } : {})}
                                       onClick={() => openCardInUrl(card, col.name)}>
                                       {/* Labels */}
                                       {card.labels && card.labels.length > 0 && (

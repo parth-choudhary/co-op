@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Columns3, MessageSquare, Bot, Settings, Users,
   ChevronLeft, ChevronRight, Plus, LogOut, Check, ChevronsUpDown,
-  FolderKanban, Search, X, Bell,
+  FolderKanban, Search, X, Bell, BookOpen,
 } from 'lucide-react';
 import CoOpLogo from '@/components/CoOpLogo';
 import { signOut } from 'next-auth/react';
@@ -105,8 +105,8 @@ export default function Sidebar({ user, projects, currentProject, boards, member
 
   const projectNav = currentProject ? [
     { href: `${projectBase}`, icon: LayoutDashboard, label: 'Overview', exact: true },
-    { href: `${projectBase}/chat`, icon: MessageSquare, label: 'Chat' },
-    { href: `${projectBase}/agents`, icon: Bot, label: 'AI Agents' },
+    { href: `${projectBase}/chat`, icon: MessageSquare, label: 'Chat', coachTarget: 'chat-nav' as const },
+    { href: `${projectBase}/agents`, icon: Bot, label: 'AI Agents', coachTarget: 'agents-nav' as const },
     { href: `${projectBase}/members`, icon: Users, label: 'Members' },
     { href: `${projectBase}/settings`, icon: Settings, label: 'Settings' },
   ] : [];
@@ -174,6 +174,18 @@ export default function Sidebar({ user, projects, currentProject, boards, member
               </Link>
             );
           })()}
+          {(() => {
+            const active = isNavActive('/onboarding') || pathname === '/onboarding';
+            return (
+              <Link href="/onboarding"
+                className={`${styles.item} ${active ? styles.itemActive : ''}`}
+                title={collapsed ? 'Help & getting started' : undefined}>
+                <BookOpen size={20} />
+                {!collapsed && <span>Help</span>}
+                {active && <div className={styles.indicator} />}
+              </Link>
+            );
+          })()}
         </div>
         {inProject ? (
           <>
@@ -183,7 +195,8 @@ export default function Sidebar({ user, projects, currentProject, boards, member
               {projectNav.map((item) => (
                 <Link key={item.href} href={item.href}
                   className={`${styles.item} ${isNavActive(item.href, item.exact) ? styles.itemActive : ''}`}
-                  title={collapsed ? item.label : undefined}>
+                  title={collapsed ? item.label : undefined}
+                  {...(item.coachTarget ? { 'data-coach-target': item.coachTarget } : {})}>
                   <item.icon size={20} />
                   {!collapsed && <span>{item.label}</span>}
                   {item.label === 'Chat' && chatUnread > 0 && (

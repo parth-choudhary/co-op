@@ -3,6 +3,8 @@ import { redirect, notFound } from 'next/navigation';
 import prisma from '@/lib/db';
 import Sidebar from '@/components/layout/Sidebar';
 import { BottomTabBar } from '@/components/mobile/BottomTabBar';
+import OnboardingCoach from '@/components/onboarding/OnboardingCoach';
+import { COACH_STEPS, DEMO_PROJECT_NAME } from '@/lib/onboarding/demoContent';
 
 export default async function ProjectLayout({
   children,
@@ -65,6 +67,11 @@ export default async function ProjectLayout({
       {/* M1 Phase 1 / Plan 01-04.5 — visible only at <768px (CSS-gated).
           Three tabs (Plans/Runs/Chat) scoped to the current project. */}
       <BottomTabBar />
+      {/* Onboarding coach — gated client-side on this being the demo project +
+          on localStorage not having recorded a dismissal. No-op for everyone else. */}
+      {currentProject.name === DEMO_PROJECT_NAME && (
+        <OnboardingCoach steps={COACH_STEPS} demoProjectId={projectId} currentProjectId={projectId} />
+      )}
     </div>
   );
 }

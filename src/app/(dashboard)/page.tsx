@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, FolderKanban, Loader2, X, ArrowRight, Users, Columns3, Bot, Sparkles, Terminal } from 'lucide-react';
+import { Plus, FolderKanban, Loader2, X, ArrowRight, Users, Columns3, Bot, Sparkles, Terminal, Wand2, BookOpen } from 'lucide-react';
 
 interface ProjectData {
   id: string; name: string; description: string | null; color: string; role: string;
@@ -19,7 +19,22 @@ export default function ProjectHubPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', color: '#00d992', defaultAgentShell: false });
+
+  // Brownfield onboarding entry point. Seeds (or finds the existing) demo
+  // project for this user, then deep-links them straight to it. Idempotent
+  // by user+company on the server, so double-clicks are safe.
+  const handleCreateDemo = async () => {
+    setSeedingDemo(true);
+    try {
+      const res = await fetch('/api/onboarding/demo', { method: 'POST' });
+      if (res.ok) {
+        const { projectId } = await res.json();
+        if (projectId) router.push(`/p/${projectId}`);
+      }
+    } finally { setSeedingDemo(false); }
+  };
 
   useEffect(() => {
     fetch('/api/projects').then((r) => r.json()).then(setProjects).finally(() => setLoading(false));
@@ -57,9 +72,17 @@ export default function ProjectHubPage() {
             {projects.length} project{projects.length !== 1 ? 's' : ''} — select one to get started
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={16} />New Project
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <Link href="/onboarding" className="btn btn-ghost" title="Getting-started guide">
+            <BookOpen size={16} /> Help
+          </Link>
+          <button className="btn btn-secondary" onClick={handleCreateDemo} disabled={seedingDemo} title="Spin up a guided demo project">
+            {seedingDemo ? <Loader2 size={16} className="spin" /> : <Wand2 size={16} />} Try the demo
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={16} />New Project
+          </button>
+        </div>
       </div>
 
       {/* Projects Grid */}
@@ -69,10 +92,15 @@ export default function ProjectHubPage() {
             <FolderKanban size={36} style={{ color: 'var(--color-accent)', opacity: 0.5 }} />
           </div>
           <p style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)' }}>No projects yet</p>
-          <p className="text-secondary" style={{ maxWidth: 400 }}>Create your first project to start managing tasks with kanban boards, AI agents, and team chat.</p>
-          <button className="btn btn-primary" style={{ marginTop: 'var(--space-2)' }} onClick={() => setShowModal(true)}>
-            <Plus size={16} />Create Your First Project
-          </button>
+          <p className="text-secondary" style={{ maxWidth: 480 }}>Spin up a guided demo to see how kanban, chat, and AI agents play together — or jump straight to a real project.</p>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+            <button className="btn btn-primary" onClick={handleCreateDemo} disabled={seedingDemo}>
+              {seedingDemo ? <Loader2 size={16} className="spin" /> : <Wand2 size={16} />} Try the guided demo
+            </button>
+            <button className="btn btn-secondary" onClick={() => setShowModal(true)}>
+              <Plus size={16} />New Project
+            </button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>

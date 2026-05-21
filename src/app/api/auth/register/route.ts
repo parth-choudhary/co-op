@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
+import { seedDemoProject } from '@/lib/onboarding/seed';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,9 +21,22 @@ export async function POST(request: NextRequest) {
       });
       return { user, company };
     });
+
+    // Best-effort onboarding seed. A seed failure must never block account
+    // creation — the user can still create projects by hand, and the dashboard
+    // exposes a "Create demo project" button as a brownfield fallback.
+    let demoProjectId: string | null = null;
+    try {
+      const seeded = await seedDemoProject({ userId: result.user.id, companyId: result.company.id });
+      demoProjectId = seeded.projectId;
+    } catch (seedErr) {
+      console.warn('[register] demo seed failed (non-fatal):', seedErr);
+    }
+
     return NextResponse.json({
       message: 'Account created successfully',
       user: { id: result.user.id, email: result.user.email, name: result.user.name },
+      demoProjectId,
     }, { status: 201 });
   } catch (error) {
     console.error('Registration error:', error);
