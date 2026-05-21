@@ -66,7 +66,7 @@ npm run setup:start
 That's it. `npm run setup:start` does the whole bring-up and then runs the dev server:
 
 1. Installs npm dependencies
-2. Creates `.env` from `.env~` (with a freshly generated `NEXTAUTH_SECRET`)
+2. Creates `.env` from `env.example` (with a freshly generated `NEXTAUTH_SECRET`)
 3. Generates the per-deployment Synapse signing key
 4. Boots Postgres + Synapse via `docker compose`
 5. Runs `prisma migrate deploy` + `prisma generate`
@@ -107,7 +107,7 @@ npx tsx scripts/provision-agent-matrix.ts
 
 ```bash
 npm install
-cp .env~ .env                                    # then edit NEXTAUTH_SECRET, etc.
+cp env.example .env                              # then edit NEXTAUTH_SECRET, etc.
 docker run --rm -v "$(pwd)/docker/synapse:/data" \
   -e SYNAPSE_SERVER_NAME=coop.local -e SYNAPSE_REPORT_STATS=no \
   matrixdotorg/synapse:latest generate           # one-time signing key

@@ -53,9 +53,15 @@ else
 fi
 
 # --- 3. .env -------------------------------------------------------------
+# Source-of-truth template is `env.example` (tracked in git). The legacy
+# `.env~` file is gitignored (.env* pattern) and not present in fresh clones,
+# so reading from it would break first-run setup for new contributors.
 if [ ! -f .env ]; then
-  log "Creating .env from .env~"
-  cp .env~ .env
+  if [ ! -f env.example ]; then
+    fail "env.example not found — cannot bootstrap .env"
+  fi
+  log "Creating .env from env.example"
+  cp env.example .env
   SECRET="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')"
   # Replace the placeholder secret. Use a different delimiter since base64 may contain /.
   if grep -q '^NEXTAUTH_SECRET=' .env; then
@@ -67,7 +73,8 @@ if [ ! -f .env ]; then
       fs.writeFileSync(p,s);
     " "$SECRET"
   fi
-  # Drop the dev token from .env~ so the admin step below regenerates a real one.
+  # Drop the dev token copied from env.example so the admin step below
+  # regenerates a real one tied to this deployment's Synapse instance.
   node -e "
     const fs=require('fs');
     const p='.env';
